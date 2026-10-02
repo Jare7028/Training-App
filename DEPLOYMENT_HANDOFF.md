@@ -23,3 +23,5 @@ Official Supabase MCP OAuth and the Vercel CLI are authenticated through private
 Live password recovery was verified with a temporary synthetic Auth user, without sending email, and that user was removed. Default Supabase email templates remain unchanged: the free plan/default provider rejected template customisation. Actual mailbox delivery and third-party assessor invitations are separate checks; custom SMTP may be needed for addresses outside the Supabase organisation.
 
 The old `chatgpt.site` address is a separate deployment and is no longer used by this app.
+
+If a READY build serves an older global stylesheet, inspect the public page's stylesheet contents rather than relying on the commit label. A fresh Vercel production rebuild of the same Git SHA with the supported `forceNew=1` deployment option corrected this cache issue. Local diagnosis likewise required stopping the owned Next server and removing generated `.next` output before `build:local`. Do not remove source, private runtime authentication or database data.

@@ -21,7 +21,7 @@ export default function TypingTest({ passage, value, onChange, mode, seconds, re
     const feedback = useMemo(() => typingFeedback(passage, value, Math.min(selection, value.length)), [passage, value, selection]);
     const metrics = useMemo(() => legacy ? typingScore(deferred, passage, 60) : prefixTypingScore(deferred, passage, 60), [deferred, passage, legacy]);
     const duration = Math.max(mode === 'complete' ? .001 : 1, Math.min(seconds, elapsed));
-    const speed = (rate: number) => (rate * 60 / duration).toFixed(1);
+    const speed = (rate: number) => (Math.round(rate * 60 / duration * 10) / 10).toFixed(1);
     const nextKey = feedback.expected === ' ' ? 'Space' : feedback.expected === '\n' ? 'Enter' : feedback.expected === '\t' ? 'Tab' : feedback.expected;
     const caretOffset = feedback.items[feedback.activeIndex]?.offset;
     useEffect(() => {

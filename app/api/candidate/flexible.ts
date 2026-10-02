@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { firstRow, updateRows, RecordRow } from '@/db/store';
-import { Answer, Assessment, scoreAttempt, workDuration } from '@/lib/assessment';
+import { Answer, Assessment, scoreAttempt, workDuration, typingSeconds } from '@/lib/assessment';
 
 type Command = { action: string; revision: number; answer?: Answer; index?: number };
 export async function flexibleCommand(row: RecordRow, body: Command, view: (row: RecordRow) => unknown) {
@@ -19,10 +19,11 @@ export async function flexibleCommand(row: RecordRow, body: Command, view: (row:
         if (row.status !== 'in-progress') return fail('Start the assessment before answering.');
         if (!['save','navigate','submit','typing-start','typing-finish','typing-interrupted'].includes(body.action)) return fail('Invalid action.');
         if (body.action === 'typing-start') {
-            if (section.kind !== 'typing' || section.typingMode !== 'prefix-v1') return fail('This section is not a measured typing task.');
+            if (section.kind !== 'typing') return fail('This section is not a measured typing task.');
             if (existing.typing) return fail('The typing sample cannot be restarted.');
-            if (Number(row.deadline) - now < 60000) return fail('Less than 60 seconds remain. Continue with your other answers or submit the saved work.');
-            answers[section.id] = { text: '', typing: { startedAt: now, deadline: now + 60000, complete: false } };
+            const window = typingSeconds(section) * 1000;
+            if (Number(row.deadline) - now < window) return fail(`Less than ${window/1000} seconds remain. Continue with your other answers or submit the saved work.`);
+            answers[section.id] = { text: '', typing: { startedAt: now, deadline: now + window, complete: false } };
         } else {
             const incoming = body.answer;
             if (section.kind === 'typing') {
@@ -33,10 +34,11 @@ export async function flexibleCommand(row: RecordRow, body: Command, view: (row:
                     if (body.action === 'typing-interrupted') existing.typing.interrupted = true;
                     if (body.action === 'typing-finish') {
                         const exact = (existing.text || '').normalize('NFC') === (section.passage || '').normalize('NFC');
-                        if (now < existing.typing.deadline && !exact) return fail('Type for the full 60 seconds, or finish the complete passage accurately.');
+                        const seconds = typingSeconds(section);
+                        if (now < existing.typing.deadline && (!exact || section.typingMode !== 'prefix-v1')) return fail(`Type for the full ${seconds} seconds${section.typingMode === 'prefix-v1' ? ', or finish the complete passage accurately' : ''}.`);
                         existing.typing.complete = true;
                         existing.typing.ceiling = exact && now < existing.typing.deadline;
-                        existing.typing.seconds = Math.min(60, Math.max(.001, (now - existing.typing.startedAt) / 1000));
+                        existing.typing.seconds = Math.min(seconds, Math.max(.001, (now - existing.typing.startedAt) / 1000));
                     }
                     answers[section.id] = existing;
                 }

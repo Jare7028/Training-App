@@ -123,6 +123,16 @@ export const rubric = [
 ];
 export const duration = (mods: TestModule[]) => mods.reduce((n, m) => n + m.seconds, 0);
 export const workDuration = (a: Assessment) => a.config?.flexible ? a.config.workSeconds : duration(a.modules);
+export const typingSeconds = (m: TestModule) => m.typingMode === 'prefix-v1' ? 60 : m.seconds;
+export function withTypingAdministration(a: Assessment): Assessment {
+    if (a.config?.flexible || !a.modules.some(m => m.kind === 'typing' && m.typingMode === 'prefix-v1')) return a;
+    const workSeconds = Math.max(90, duration(a.modules));
+    return { ...a, config: a.config ? { ...a.config, flexible:true, workSeconds:Math.max(90,a.config.workSeconds) } : {
+        flexible:true, workSeconds, introductionSeconds:Math.min(60, Math.max(0,600-workSeconds)), code:'Custom assessment', supportEmail:'', spellCheck:true,
+        toolPolicy:'Use your own reasoning and writing, without AI or help from other people. Ordinary spelling tools and agreed assistive technology are allowed.',
+        notice:'Your responses are saved for the hiring team to review. Ask the person who sent this link about data retention or deletion.',
+    } };
+}
 export function reviewCriteria(modules: TestModule[]) { return modules.filter(m => m.kind === 'writing').flatMap(m => m.rubric ? m.rubric.map(r => ({ ...r, key: `${m.id}:${r.id}`, moduleTitle: m.title })) : rubric.map(r => ({ ...r, max: 4, key: r.id, moduleTitle: m.title }))); }
 export const formatTime = (seconds: number) => `${Math.floor(Math.max(0, seconds) / 60)}:${String(Math.ceil(Math.max(0, seconds) % 60)).padStart(2, '0')}`;
 export const words = (s: string) => s.trim() ? s.trim().split(/\s+/).length : 0;
@@ -156,8 +166,8 @@ export function validateAssessment(a: Assessment, publishing = false): string | 
         if ((m.kind === 'typing' || m.kind === 'writing') && m.questions !== undefined)
             return 'Typing and writing modules cannot contain objective questions.';
         if (m.kind === 'typing') {
-            if (typeof m.passage !== 'string' || m.passage.length < 100 || m.passage.length > 5000 || !Number.isFinite(m.targetWpm) || m.targetWpm! < 1 || m.targetWpm! > 200)
-                return 'Typing needs a 100–5,000 character passage and a target of 1–200 WPM.';
+            if (typeof m.passage !== 'string' || m.passage.length < 100 || m.passage.length > 5000 || ((m.typingMode !== 'prefix-v1' || m.targetWpm !== undefined) && (!Number.isFinite(m.targetWpm) || m.targetWpm! < 1 || m.targetWpm! > 200)))
+                return 'Typing needs a 100–5,000 character passage; legacy scoring also needs a target of 1–200 WPM.';
         }
         else if (m.kind === 'writing') {
             if (typeof m.prompt !== 'string' || !m.prompt.trim() || m.prompt.length > 4000)
@@ -196,10 +206,11 @@ export function typingScore(text: string, passage: string, seconds: number, targ
 export function scoreAttempt(modules: TestModule[], answers: Record<string, Answer>, completedAt: number, timedOut = false): Result {
     const scores: ModuleScore[] = modules.map(m => {
         const a = answers[m.id] || {};
+        const sampleSeconds = a.typing?.seconds ?? (m.typingMode === 'prefix-v1' && (a.typing || !a.text) ? 60 : m.seconds);
         if (m.kind === 'writing')
             return { id: m.id, title: m.title, kind: m.kind, score: null };
         if (m.kind === 'typing')
-            return m.typingMode === 'prefix-v1' ? { id: m.id, title: m.title, kind: m.kind, ...prefixTypingScore(a.text || '', m.passage || '', a.typing?.seconds || 60), score: null, administration: !a.typing || !a.text ? 'Not attempted' : !a.typing.complete || a.typing.interrupted ? 'Incomplete — technical review' : 'Measured', ceiling: !!a.typing?.ceiling } : { id: m.id, title: m.title, kind: m.kind, ...typingScore(a.text || '', m.passage || '', m.seconds, m.targetWpm) };
+            return m.typingMode === 'prefix-v1' ? { id: m.id, title: m.title, kind: m.kind, ...prefixTypingScore(a.text || '', m.passage || '', sampleSeconds), score: null, administration: !a.text ? 'Not attempted' : a.typing && (!a.typing.complete || a.typing.interrupted) ? 'Incomplete — technical review' : 'Measured', ceiling: !!a.typing?.ceiling } : { id: m.id, title: m.title, kind: m.kind, ...typingScore(a.text || '', m.passage || '', sampleSeconds, m.targetWpm) };
         const details = (m.questions || []).map(q => ({ questionId: q.id, prompt: q.prompt, selected: typeof a.choices?.[q.id] === 'number' ? q.options[a.choices[q.id]] ?? null : null, selectedId: typeof a.choices?.[q.id] === 'number' ? q.optionIds?.[a.choices[q.id]] || `${q.id}-${a.choices[q.id]}` : null, optionOrder: q.optionIds || q.options.map((_, i) => `${q.id}-${i}`), answer: q.options[q.correct], correct: a.choices?.[q.id] === q.correct, explanation: q.explanation }));
         const correct = details.filter(q => q.correct).length;
         return { id: m.id, title: m.title, kind: m.kind, score: details.length ? Math.round(correct / details.length * 100) : 0, correct, total: details.length, details };

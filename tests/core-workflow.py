@@ -75,7 +75,21 @@ extra=admin({'action':'link','id':aid,'alias':'WORKFLOW SYNTHETIC Adjusted candi
 short=admin({'action':'link','id':aid,'alias':'WORKFLOW SYNTHETIC Expiry candidate'});st=short['path'].split('/')[-1];sv=command(st,candidate(st),'start');sv=command(st,sv,'save',answer)
 check('typing cannot start without a full measured window',request(guest,'/api/candidate',{'token':st,'action':'navigate','index':1,'revision':sv['revision'],'answer':answer})[0]==200)
 sv=candidate(st);check('insufficient typing time is explained',request(guest,'/api/candidate',{'token':st,'action':'typing-start','revision':sv['revision']})[0]==400)
+blank = copy.deepcopy(assessment); blank.pop('config'); blank['id']=''; blank['revision']=0; blank['modules']=[copy.deepcopy(assessment['modules'][1])]; blank['modules'][0].pop('targetWpm'); blank['title']='WORKFLOW SYNTHETIC Blank assessment with measured typing'
+blank_id=admin({'action':'save','assessment':blank})['id']; blank_saved=next(a for a in workspace()['assessments'] if a['id']==blank_id)
+check('a reusable measured module automatically enables editable administration without a target cutoff',blank_saved['config']['flexible'] and blank_saved['config']['workSeconds']==90)
+ba=admin({'action':'link','id':blank_id,'alias':'WORKFLOW SYNTHETIC Blank typing candidate'});bt=ba['path'].split('/')[-1];bv=command(bt,candidate(bt),'start');bv=command(bt,bv,'typing-start')
+check('blank assessment uses the same deliberate fixed 60-second measurement',bv['answer']['typing']['deadline']-bv['answer']['typing']['startedAt']==60000)
+bv=command(bt,bv,'typing-finish',{'text':typed});bv=command(bt,bv,'submit',{'text':typed});br=next(a for a in workspace()['attempts'] if a['id']==ba['id']);bs=br['result']['modules'][0]
+check('blank assessment saves automatic accuracy and speed from confirmed server duration',bs['accuracy']==100 and bs['errors']==0 and bs['seconds']==br['answers'][blank['modules'][0]['id']]['typing']['seconds'] and bs['score'] is None)
+legacy=copy.deepcopy(assessment);legacy['id']='';legacy['revision']=0;legacy['title']='WORKFLOW SYNTHETIC Shared timer with legacy typing';legacy['modules']=[copy.deepcopy(assessment['modules'][1])];legacy['modules'][0].pop('typingMode');legacy['modules'][0].pop('code');legacy['modules'][0]['seconds']=15;legacy['config']['workSeconds']=120
+lid=admin({'action':'save','assessment':legacy})['id'];la=admin({'action':'link','id':lid,'alias':'WORKFLOW SYNTHETIC Shared legacy typing candidate'});lt=la['path'].split('/')[-1];lv=command(lt,candidate(lt),'start');lv=command(lt,lv,'typing-start')
+check('shared timer supports an editable legacy typing module duration',lv['answer']['typing']['deadline']-lv['answer']['typing']['startedAt']==15000)
+check('legacy full-window measurement rejects early exact completion',request(guest,'/api/candidate',{'token':lt,'action':'typing-finish','revision':lv['revision'],'answer':{'text':typed}})[0]==400)
+lv=command(lt,lv,'save',{'text':typed[:80]})
 time.sleep(18)
+lv=command(lt,candidate(lt),'typing-finish',{'text':typed[:80]});lv=command(lt,lv,'submit',{'text':typed[:80]});lr=next(a for a in workspace()['attempts'] if a['id']==la['id']);ls=lr['result']['modules'][0]
+check('shared legacy typing is scored using its confirmed duration and saved text',ls['seconds']==15 and ls['accuracy']==100 and ls['netWpm']==64 and lr['answers'][legacy['modules'][0]['id']]['text']==typed[:80])
 expired=candidate(st);er=next(a for a in workspace()['attempts'] if a['id']==short['id'])
 check('expiry preserves confirmed saved work and missing evidence',expired['status']=='completed' and er['result']['timedOut'] and er['answers'][first['id']]==answer and next(m for m in er['result']['modules'] if m['kind']=='typing')['administration']=='Not attempted')
 print(f'{checks} core workflow checks passed',flush=True)

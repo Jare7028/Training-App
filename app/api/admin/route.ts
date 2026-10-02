@@ -4,10 +4,10 @@ import { NextResponse } from 'next/server';
 import { sameOrigin } from '@/lib/request-origin';
 import { getAssessmentAdmin } from '@/app/admin-auth';
 import { allRows, firstRow, insertRow, updateRows, deleteExpiredPreviews, hashToken, RecordRow } from '@/db/store';
-import { Assessment, validateAssessment, scoreAttempt, reviewCriteria, Review, TestModule, cleanModule } from '@/lib/assessment';
+import { Assessment, validateAssessment, scoreAttempt, reviewCriteria, Review, TestModule, cleanModule, withTypingAdministration } from '@/lib/assessment';
 export const dynamic = 'force-dynamic';
 const json = (data: unknown, status = 200) => NextResponse.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
-function assessment(r: RecordRow): Assessment { return { id: String(r.id), title: String(r.title), description: String(r.description), status: r.status as Assessment['status'], modules: JSON.parse(String(r.modules)), updatedAt: Number(r.updated_at), revision: Number(r.revision), config: r.config ? JSON.parse(String(r.config)) : undefined }; }
+function assessment(r: RecordRow): Assessment { return withTypingAdministration({ id: String(r.id), title: String(r.title), description: String(r.description), status: r.status as Assessment['status'], modules: JSON.parse(String(r.modules)), updatedAt: Number(r.updated_at), revision: Number(r.revision), config: r.config ? JSON.parse(String(r.config)) : undefined }); }
 function attempt(r: RecordRow) { const snapshot = JSON.parse(String(r.snapshot)); return { id: r.id, assessmentId: r.assessment_id, title: snapshot.title, alias: r.alias, status: r.status, createdAt: r.created_at, startedAt: r.started_at, deadline: r.deadline, completedAt: r.result ? JSON.parse(String(r.result)).completedAt : null, modules: snapshot.modules, config: snapshot.config, answers: JSON.parse(String(r.answers)), result: r.result ? JSON.parse(String(r.result)) : null, review: r.review ? JSON.parse(String(r.review)) : null, expiresAt: r.expires_at, revoked: !!r.revoked, revision: r.revision }; }
 export async function GET() {
     try {
@@ -93,12 +93,13 @@ export async function POST(request: Request) {
             return json({ ok: true });
         }
         if (body.action === 'save') {
-            const a = body.assessment as Assessment;
+            let a = body.assessment as Assessment;
             if (!a || !['draft', 'ready'].includes(a.status))
                 return json({ error: 'Invalid assessment.' }, 400);
             const error = validateAssessment(a, a.status === 'ready');
             if (error)
                 return json({ error }, 400);
+            a = withTypingAdministration(a);
             a.modules = a.modules.map(m => ({ ...cleanModule(m), ...(m.code ? {version: Number(a.revision || 0) + 1} : {}) }));
             const existing = a.id ? await firstRow('assessments', { id: a.id, owner }) : null;
             if (a.id && !existing) return json({ error: 'Assessment not found.' }, 404);
