@@ -24,7 +24,7 @@
     "build:local": "node scripts/local-dev.mjs build",
     "start:local": "node scripts/local-dev.mjs start",
     "test:core": "node tests/typing-metrics.mjs && python3 tests/core-workflow.py",
-    "test:core:browser": "node tests/core-browser.mjs"
+    "test:core:browser": "node tests/core-browser.mjs && node tests/typing-legacy-browser.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import TypingTest, { TypingPractice } from '@/components/typing-test';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { AssessmentConfig, Answer, TestModule, formatTime, words } from '@/lib/assessment';
@@ -81,7 +82,18 @@ export default function FlexibleCandidate({ token, initial }: { token: string; i
                 <div className="test-section-heading"><div><small>SECTION {session.currentIndex+1} OF {session.sections.length}</small><h1>{section?.title}</h1></div><span>{section?.kind==='typing'&&typing&&!typing.complete?`${formatTime(typingLeft)} typing`:formatTime(totalLeft)+' work left'}</span></div><p>{section?.instructions}</p>
                 {section?.context && <pre className="policy-card">{section.context}</pre>}
                 {section?.questions?.map((q,i)=> (!section.sequential || i===0 || answer.choices?.[section.questions![i-1].id]!==undefined) && <fieldset className="candidate-question" key={q.id}><legend>{i+1}. {q.prompt}</legend>{q.context&&<pre className="policy-card">{q.context}</pre>}<RadioGroup aria-label={q.prompt} value={answer.choices?.[q.id]===undefined?'':String(answer.choices[q.id])} onValueChange={v=>change({...input.current,choices:{...input.current.choices,[q.id]:Number(v)}})}>{q.options.map((o,n)=><label className={`candidate-option ${answer.choices?.[q.id]===n?'chosen':''}`} key={q.optionIds?.[n]||n}><RadioGroupItem value={String(n)} id={`${q.id}-${n}`}/><span>{o}</span></label>)}</RadioGroup></fieldset>)}
-                {section?.kind==='typing'&&<div className="typing-task"><h2>Reference passage</h2><div className="typing-passage" tabIndex={0} role="region" aria-label="Typing reference passage">{section.passage}</div>{!typing?<><h3>Optional unscored practice</h3><p>{section.practice}</p><Textarea aria-label="Typing practice" rows={2} spellCheck={false}/><p>The measured sample starts only when you press the button. It cannot be retaken.</p><Button disabled={busy || totalLeft<60} onClick={()=>void send('typing-start')}>Start 60-second task</Button>{totalLeft<60&&<p>Less than 60 seconds remain. You can still review and submit your other answers.</p>}</>:<><label className="field"><span>Your typed copy</span><Textarea ref={typingInput} aria-label="Your typed copy" rows={7} disabled={typing.complete} value={answer.text||''} maxLength={5000} spellCheck={false} autoCorrect="off" autoComplete="off" onChange={e=>change({...input.current,text:e.target.value})}/></label><p>{typing.complete?'Typing saved and locked.':`${typingLeft} seconds left. Corrections are allowed.`}{typing.interrupted?' This sample was interrupted and will be flagged for technical review.':''}</p>{!typing.complete&&<Button disabled={busy || (answer.text||'').normalize('NFC')!==(section.passage||'').normalize('NFC')} onClick={()=>void send('typing-finish')}>Finish complete passage early</Button>}</>}</div>}
+                {section?.kind==='typing'&&<div className="typing-task">
+                    <TypingTest key={section.id} passage={section.passage||''} value={answer.text||''} onChange={text=>change({...input.current,text})} inputRef={typingInput} mode={!typing?'ready':typing.complete?'complete':'active'} seconds={60} remaining={typing?typingLeft:60} elapsed={typing?.seconds ?? (typing ? Math.max(0,(now-typing.startedAt)/1000) : 0)}/>
+                    {!typing?<>
+                        {section.practice&&<TypingPractice key={section.id} passage={section.practice}/>}
+                        <p>The measured sample starts only when you press the button. You have 60 seconds and can correct mistakes. It cannot be retaken.</p>
+                        <Button disabled={busy || totalLeft<60} onClick={()=>void send('typing-start')}>Start 60-second task</Button>
+                        {totalLeft<60&&<p>Less than 60 seconds remain. You can still review and submit your other answers.</p>}
+                    </>:<>
+                        {typing.interrupted&&<p role="status">This sample was interrupted and will be flagged for technical review.</p>}
+                        {!typing.complete&&<Button disabled={busy || (answer.text||'').normalize('NFC')!==(section.passage||'').normalize('NFC')} onClick={()=>void send('typing-finish')}>Finish complete passage early</Button>}
+                    </>}
+                </div>}
                 {section?.kind==='writing'&&<div className="writing-task"><h2>{section.prompt}</h2><label className="field"><span>Your reply to the customer</span><Textarea aria-label="Your reply to the customer" value={answer.text||''} maxLength={5000} rows={10} spellCheck={session.config.spellCheck} onChange={e=>change({text:e.target.value})}/></label><p>{words(answer.text||'')} words · Suggested length is guidance, with no automatic penalty.</p></div>}
                 <div className="test-actions"><span className="save-status" role="status" aria-live="polite">{busy?'Saving…':saved}</span><Button disabled={busy || measured} onClick={()=>session.currentIndex < session.sections.length-1 ? void send('navigate',session.currentIndex+1) : void send('save').then(ok=>{if(ok)setReview(true);})}>{session.currentIndex < session.sections.length-1?'Save & continue':'Review answers'}</Button></div>
             </>}

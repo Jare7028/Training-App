@@ -215,11 +215,23 @@ export function candidateModule(m: TestModule) { return { id: m.id, kind: m.kind
 export function prefixTypingScore(text: string, passage: string, seconds: number) {
     const normal = (s: string) => Array.from(s.replace(/\r\n?/g, '\n').normalize('NFC'));
     const t = normal(text), r = normal(passage), width = r.length + 1;
-    const d = new Uint16Array((t.length + 1) * width);
-    for (let j=0;j<=r.length;j++) d[j]=j;
-    for (let i=1;i<=t.length;i++) { d[i*width]=i; for(let j=1;j<=r.length;j++) d[i*width+j]=Math.min(d[(i-1)*width+j-1]+(t[i-1]===r[j-1]?0:1),d[i*width+j-1]+1,d[(i-1)*width+j]+1); }
-    let k=0; for(let j=1;j<=r.length;j++) if(d[t.length*width+j]<=d[t.length*width+k]) k=j;
-    let i=t.length,j=k,m=0; while(i||j){const here=d[i*width+j];if(i&&j&&t[i-1]===r[j-1]&&here===d[(i-1)*width+j-1]){m++;i--;j--;}else if(i&&j&&here===d[(i-1)*width+j-1]+1){i--;j--;}else if(j&&here===d[i*width+j-1]+1){j--;}else{i--;}}
+    // Carry the selected path's match count alongside two distance rows. This
+    // preserves diagonal/delete/insert tie-breaking without a quadratic matrix.
+    let previous = new Uint16Array(width), previousMatches = new Uint16Array(width);
+    let next = new Uint16Array(width), nextMatches = new Uint16Array(width);
+    for (let j=0;j<width;j++) previous[j]=j;
+    for (let i=1;i<=t.length;i++) {
+        next[0]=i; nextMatches[0]=0;
+        for (let j=1;j<width;j++) {
+            const equal=t[i-1]===r[j-1], diagonal=previous[j-1]+(equal?0:1), deletion=next[j-1]+1, insertion=previous[j]+1;
+            const distance=Math.min(diagonal,deletion,insertion);
+            next[j]=distance;
+            nextMatches[j]=distance===diagonal?previousMatches[j-1]+(equal?1:0):distance===deletion?nextMatches[j-1]:previousMatches[j];
+        }
+        [previous,next]=[next,previous]; [previousMatches,nextMatches]=[nextMatches,previousMatches];
+    }
+    let k=0; for (let j=1;j<width;j++) if(previous[j]<=previous[k]) k=j;
+    const m=previousMatches[k];
     const minutes=Math.max(.001,seconds/60), round=(n:number)=>Math.round(n*10)/10;
-    return { metric:'CS-TYPE-1.0', typedLength:t.length, referenceLength:k, matched:m, errors:d[t.length*width+k], grossWpm:round(t.length/(5*minutes)), netWpm:round(m/(5*minutes)), accuracy:t.length?round(100*m/Math.max(t.length,k)):0, seconds };
+    return { metric:'CS-TYPE-1.0', typedLength:t.length, referenceLength:k, matched:m, errors:previous[k], grossWpm:round(t.length/(5*minutes)), netWpm:round(m/(5*minutes)), accuracy:t.length?round(100*m/Math.max(t.length,k)):0, seconds };
 }

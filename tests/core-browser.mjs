@@ -1,5 +1,7 @@
 import {chromium} from 'playwright';
 import AxeBuilder from '@axe-core/playwright';
+import {checkTypingInteraction} from './typing-browser-checks.mjs';
+import {prefixTypingScore} from '../lib/assessment.ts';
 import assert from 'node:assert/strict';
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
 const base='http://127.0.0.1:5173';
@@ -33,7 +35,16 @@ for(const [device,viewport] of [['mobile',{width:390,height:844}],['desktop',{wi
  await candidate.reload();await candidate.locator('.candidate-question').first().waitFor();const after=await candidate.evaluate(async token=>(await fetch('/api/candidate?token='+token)).json(),token);assert.equal(after.deadline,before.deadline);assert.ok(await candidate.locator('.candidate-question').first().getByRole('radio').nth(1).isChecked());
  await candidate.getByRole('button',{name:'Save & continue',exact:true}).click();await candidate.getByRole('button',{name:'Start 60-second task',exact:true}).waitFor();
  await audit(candidate,device+' deliberate typing setup');
+ const preTyping=await candidate.evaluate(async token=>(await fetch('/api/candidate?token='+token)).json(),token);
+ await candidate.getByText('Optional unscored practice',{exact:true}).click();await candidate.getByLabel('Typing practice',{exact:true}).pressSequentially('Practice', {delay:10});
+ assert.equal((await candidate.evaluate(async token=>(await fetch('/api/candidate?token='+token)).json(),token)).answer.typing,undefined);
+ assert.equal(preTyping.answer.typing,undefined);pass(device+' editable practice is interactive and never starts the measured timer');
  await candidate.getByRole('button',{name:'Start 60-second task',exact:true}).click();await candidate.getByLabel('Your typed copy',{exact:true}).waitFor();
+ const typingStart=await candidate.evaluate(async token=>(await fetch('/api/candidate?token='+token)).json(),token);
+ await checkTypingInteraction(candidate,content.modules[1].passage,pass,audit,device,`test-results/core/${device}-typing.png`);
+ const typingAfter=await candidate.evaluate(async token=>(await fetch('/api/candidate?token='+token)).json(),token);
+ assert.equal(typingAfter.answer.typing.deadline,typingStart.answer.typing.deadline);assert.equal(typingAfter.deadline,typingStart.deadline);
+
  if(device==='desktop'){
    await autosave(candidate,()=>candidate.getByLabel('Your typed copy',{exact:true}).fill(content.modules[1].passage.slice(0,120)));
    await candidate.getByText('Typing saved and locked.',{exact:false}).waitFor({timeout:70000});
@@ -44,6 +55,7 @@ for(const [device,viewport] of [['mobile',{width:390,height:844}],['desktop',{wi
    await candidate.getByRole('button',{name:'Finish complete passage early',exact:true}).click();await candidate.getByText('Typing saved and locked.',{exact:false}).waitFor();
    pass('mobile typing refresh retains text and records technical interruption');
  }
+ assert.ok(await candidate.getByLabel('Your typed copy',{exact:true}).evaluate(n=>n.readOnly));
  await candidate.getByRole('button',{name:'Save & continue',exact:true}).click();await candidate.locator('.candidate-question').first().waitFor();assert.equal(await candidate.locator('.candidate-question').count(),1);
  await candidate.locator('.candidate-question').first().getByRole('radio').nth(1).check();await candidate.locator('.candidate-question').nth(1).waitFor();
  await autosave(candidate,()=>candidate.locator('.candidate-question').nth(1).getByRole('radio').nth(2).check());await audit(candidate,device+' developing policy case');
@@ -56,7 +68,7 @@ for(const [device,viewport] of [['mobile',{width:390,height:844}],['desktop',{wi
  await admin.reload();await admin.getByRole('heading',{name:'Assessments',exact:true}).waitFor();if(device==='mobile')await admin.getByRole('button',{name:'Toggle Sidebar'}).click();await admin.getByRole('button',{name:/^Candidate review/}).click();if(device==='mobile')await admin.keyboard.press('Escape');await admin.getByRole('heading',{name:'Candidate review',exact:true}).waitFor();await admin.getByRole('textbox',{name:'Search candidates'}).fill(alias);await admin.getByRole('button',{name:`Review ${alias}`,exact:true}).click();await admin.locator('.candidate-response').filter({hasText:reply}).waitFor();
  for(const criterion of content.modules[3].rubric){const radio=admin.getByRole('radiogroup',{name:criterion.title,exact:true}).getByRole('radio').nth(3);await radio.focus();await radio.press('Space');assert.ok(await radio.isChecked());await admin.getByLabel('Evidence: '+criterion.title,{exact:true}).fill('Quote: '+reply.slice(0,180));}
  await admin.getByLabel('Review notes & evidence',{exact:true}).fill('Specific acknowledgement, accurate choices and a 16:00 follow-up.');await audit(admin,device+' five evidence-based human ratings');await Promise.all([admin.waitForResponse(r=>r.url().endsWith('/api/admin')&&r.request().method()==='POST'&&r.request().postDataJSON().action==='review'&&r.ok()),admin.getByRole('button',{name:'Save human review',exact:true}).click()]);await admin.getByText(/Last reviewed/).waitFor();
- const stored=(await api(admin)).attempts.find(a=>a.id===assignment.id);assert.equal(stored.result.objectiveCorrect,4);assert.equal(stored.result.objectiveTotal,4);assert.equal(Object.keys(stored.review.ratings).length,5);assert.equal(stored.result.modules.find(m=>m.kind==='typing').administration,device==='desktop'?'Measured':'Incomplete — technical review');
+ const stored=(await api(admin)).attempts.find(a=>a.id===assignment.id);assert.equal(stored.result.objectiveCorrect,4);assert.equal(stored.result.objectiveTotal,4);assert.equal(Object.keys(stored.review.ratings).length,5);assert.equal(stored.result.modules.find(m=>m.kind==='typing').administration,device==='desktop'?'Measured':'Incomplete — technical review');const savedTyping=stored.result.modules.find(m=>m.kind==='typing');const typingAnswer=stored.answers[content.modules[1].id];const expectedTyping=prefixTypingScore(typingAnswer.text,content.modules[1].passage,typingAnswer.typing.seconds);for(const key of ['grossWpm','netWpm','accuracy','errors','seconds'])assert.equal(savedTyping[key],expectedTyping[key]);pass(device+' saved automatic typing measurements match confirmed text and server duration');
  await admin.getByLabel('Review notes & evidence',{exact:true}).fill('Revised review: '+reply.slice(0,120));await Promise.all([admin.waitForResponse(r=>r.url().endsWith('/api/admin')&&r.request().method()==='POST'&&r.request().postDataJSON().action==='review'&&r.ok()),admin.getByRole('button',{name:'Save human review',exact:true}).click()]);await admin.getByText(/Last reviewed/).waitFor();await admin.screenshot({path:`test-results/core/${device}-review.png`,fullPage:true});const revised=(await api(admin)).attempts.find(a=>a.id===assignment.id);assert.equal(revised.review.history.length,1);assert.deepEqual(errors,[]);pass(device+' persisted decision counts, typing observations and review audit trail');
  await candidateContext.close();await adminContext.close();
 }
