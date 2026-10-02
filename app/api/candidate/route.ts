@@ -2,7 +2,8 @@ import { getAssessmentAdmin } from '@/app/admin-auth';
 import { NextResponse } from 'next/server';
 import { sameOrigin } from '@/lib/request-origin';
 import { firstRow, updateRows, hashToken, RecordRow } from '@/db/store';
-import { Assessment, Answer, candidateModule, duration, scoreAttempt } from '@/lib/assessment';
+import { Assessment, Answer, candidateModule, duration, scoreAttempt, workDuration } from '@/lib/assessment';
+import { flexibleCommand } from './flexible';
 export const dynamic = 'force-dynamic';
 const json = (data: unknown, status = 200) => NextResponse.json(data, { status, headers: { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
 function table(row: RecordRow) { return row.preview ? 'preview_attempts' : 'attempts'; }
@@ -21,7 +22,7 @@ async function find(token: string) {
     if (row.revoked || Number(row.expires_at) <= Date.now()) return null;
     return row;
 }
-function view(row: RecordRow) { const t: Assessment = JSON.parse(String(row.snapshot)); const index = Number(row.current_index); const section = t.modules[index]; return { id: row.id, title: t.title, description: t.description, alias: row.alias, status: row.status, preview: !!row.preview, seconds: duration(t.modules), sections: t.modules.map(m => ({ title: m.title, kind: m.kind, seconds: m.seconds })), currentIndex: index, module: row.status === 'in-progress' && section ? candidateModule(section) : null, answer: row.status === 'in-progress' && section ? JSON.parse(String(row.answers))[section.id] || {} : {}, startedAt: row.started_at, deadline: row.deadline, sectionDeadline: row.section_started_at && section ? Math.min(Number(row.deadline), Number(row.section_started_at) + section.seconds * 1000) : null, serverNow: Date.now(), revision: row.revision }; }
+function view(row: RecordRow) { const t: Assessment = JSON.parse(String(row.snapshot)); const index = Number(row.current_index); const section = t.modules[index]; return { id: row.id, title: t.title, description: t.description, alias: row.alias, status: row.status, preview: !!row.preview, seconds: workDuration(t), config: t.config, ...(t.config?.flexible && row.status === 'in-progress' ? { modules: t.modules.map(candidateModule), allAnswers: JSON.parse(String(row.answers)) } : {}), sections: t.modules.map(m => ({ title: m.title, kind: m.kind, seconds: m.seconds })), currentIndex: index, module: row.status === 'in-progress' && section ? candidateModule(section) : null, answer: row.status === 'in-progress' && section ? JSON.parse(String(row.answers))[section.id] || {} : {}, startedAt: row.started_at, deadline: row.deadline, sectionDeadline: row.section_started_at && section ? Math.min(Number(row.deadline), Number(row.section_started_at) + section.seconds * 1000) : null, serverNow: Date.now(), revision: row.revision }; }
 async function expire(row: RecordRow) { if (row.status === 'in-progress' && Number(row.deadline) + 2500 <= Date.now()) {
     const t: Assessment = JSON.parse(String(row.snapshot));
     const result = scoreAttempt(t.modules, JSON.parse(String(row.answers)), Number(row.deadline), true);
@@ -61,6 +62,7 @@ export async function POST(request: Request) {
             action: string;
             revision: number;
             answer: Answer;
+            index?: number;
         };
         let row = await find(String(body.token || ''));
         if (!row)
@@ -73,6 +75,7 @@ export async function POST(request: Request) {
             return json(view(row));
         if (row.revision !== body.revision)
             return json({ error: 'Your assessment has changed in another tab. Reload to continue.', conflict: true }, 409);
+        if (t.config?.flexible) return flexibleCommand(row, body, view);
         if (body.action === 'start') {
             if (row.status !== 'not-started')
                 return json(view(row));

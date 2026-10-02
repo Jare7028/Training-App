@@ -8,4 +8,14 @@ Coverage: reusable module create/edit, frozen assessment content, ten-minute val
 
 Local CLI health-check limitation: the slim GoTrue container's wget health probe follows inherited HTTP proxy settings and receives 403. Direct local GoTrue health responds 200, and the application uses direct loopback fetches. Startup uses the CLI's documented ignore-health-check option followed by explicit functional health and database checks; an unavailable API still fails readiness.
 
-Hosted Supabase configuration, Vercel deployment, real email delivery, real-device/assistive-technology testing and production-origin isolation remain unverified. The current session's proxy rejects external Supabase API requests. No deployed-site readiness claim is made.
+Hosted Supabase Auth, table permissions/RLS, public Vercel access, real admin authentication, synthetic password recovery and access isolation have been verified on https://training-app-ashy-eight.vercel.app. The recovery check used an admin-generated link and sent no email; actual mailbox delivery remains unverified. Temporary Auth users and isolation fixtures were removed. Real-device and assistive-technology testing remain separate from automated browser checks.
+
+## Supplied core assessment
+
+The source document is converted into four editable modules and an overall assessment, with keys B/A/B/C. `tests/typing-metrics.mjs` covers the documented Unicode/prefix-alignment metric, interior omissions, insertions, empty input, an unfinished tail, correction to exact text, elapsed-time speed, longest-prefix tie-breaking and stable answer IDs after reordering. The measured passage contains 706 characters and 128 words.
+
+`tests/core-workflow.py` exercises the real local API and PostgreSQL: shared deadlines, returning to earlier answers, confidential payloads, deliberate typing, rejected restarts and partial early finish, exact-passage early completion, locked typing, separate four-decision results, duplicate submission, five human criteria with evidence, review history, immutable assignments, recorded extra time and expiry preserving saved work. It passed 19 checks.
+
+`tests/core-browser.mjs` exercises both desktop and mobile against Next's production server. It passed 20 checks (including fourteen automated WCAG audits), covering editable timing and all five rubric criteria, signed-out completion, developing case facts, typing practice/start, a normal 60-second desktop sample, mobile typing refresh with technical-review flag, writing autosave, response review, decision counts and persisted human review history. Axe runs after finite UI transitions settle, retaining all zero-violation assertions. Its source is deliberately restricted to local QA; hosted verification uses a separately scoped private copy and removes only explicitly tracked synthetic IDs.
+
+The core is a pilot work sample. Automated correctness and accessibility checks do not establish predictive validity, screen-reader usability or appropriate hiring cutoffs. No hiring decision, percentile, universal speed cutoff or automatic writing grade is generated.

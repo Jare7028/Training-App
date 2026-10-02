@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 
 export type RecordRow = Record<string, unknown>;
 type Table = 'assessments' | 'attempts' | 'modules' | 'preview_attempts';
-const jsonColumns = new Set(['modules', 'content', 'snapshot', 'answers', 'result', 'review']);
+const jsonColumns = new Set(['modules', 'content', 'snapshot', 'answers', 'result', 'review', 'config']);
 
 // Normalize serialized assessment snapshots at this boundary; PostgreSQL stores
 // actual JSONB. Issued attempts continue using their immutable content copy.

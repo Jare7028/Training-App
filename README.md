@@ -45,4 +45,23 @@ Preview test creates a separate, owner-protected preview. Create candidate link 
 
 The server-only Supabase credential accesses PostgreSQL. Row-level security is enabled and both anonymous and authenticated browser roles have no access to assessment content, answer keys or results. The Next API checks admin identity/ownership and strips scoring keys from candidate responses.
 
-See [DEPLOYMENT_HANDOFF.md](DEPLOYMENT_HANDOFF.md), [PRODUCTION_READINESS.md](PRODUCTION_READINESS.md) and [QA.md](QA.md). A successful local build is not a deployed website. Buddy's replacement assessment remains queued until its source is available.
+See [DEPLOYMENT_HANDOFF.md](DEPLOYMENT_HANDOFF.md), [PRODUCTION_READINESS.md](PRODUCTION_READINESS.md) and [QA.md](QA.md). The production website is https://training-app-ashy-eight.vercel.app. The app account is jaredsbuddy@outlook.com; enter that email on /login and use Reset password to choose a password. The Supabase dashboard login is separate.
+
+## Customer-service core assessment
+
+The supplied assessment is preserved in `content/customer-service-core-v1.json` as an administrative import source, including confidential answer keys. It is not imported by application client code or served as a public asset. Importing it is an explicit administrator operation; application startup never seeds assessments, modules or candidates. The editable database records, rather than this file, drive the workspace.
+
+The core comprises CS01 customer updates, CS02 typing, CS03 delivery policy and CS06 customer email. The shared work timer is 530 seconds, with a planned 60-second introduction and 20 seconds for transitions already included in timed work: 590 seconds planned overall. Section budgets are guidance. Non-typing answers can be revisited before submission. Typing has optional unscored practice and a deliberate 60-second task, separate speed/accuracy observations, exact-passage early completion and a technical-review flag after interruption.
+
+In Module library, edit each module's content, policy, choices, keys, timing, typing passage or writing criteria. Edit the assessment to change its copies and administration settings. Existing assignments retain their original content and configuration. Human reviewers enter five individually anchored 0–3 ratings with evidence; revisions preserve previous ratings and reviewer identity. No automatic writing grade or hiring verdict is produced.
+
+Extra work time can be assigned when generating a link. A technical restart requires an administrator to create a fresh candidate link and revoke the affected original link where appropriate; both records remain available for review. No diagnosis is requested. The support email is optional; without it candidates are directed to the person who supplied their link. Assessment replies, including the pretend customer email, are saved in the app and are never sent as email.
+
+Additional local verification:
+
+```sh
+npm run test:core
+npm run test:core:browser
+```
+
+Run these sequentially with the other suites. For production-mode local QA, stop the local dev server, run `npm run build:local`, then `npm run start:local`. These commands explicitly use the isolated local QA configuration even when hosted variables are injected into the cloud environment. Standard `npm run build` remains the Vercel production build.

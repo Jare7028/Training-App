@@ -1,0 +1,212 @@
+{
+  "id": "",
+  "title": "Customer service work sample",
+  "description": "Short, realistic written-support tasks for a fictional home-and-office retailer. All facts and policies are provided.",
+  "status": "ready",
+  "revision": 0,
+  "updatedAt": 0,
+  "modules": [
+    {
+      "id": "c5898252-08ed-491a-9c67-f0021b127058",
+      "code": "CS01-v1.0",
+      "version": 1,
+      "kind": "spelling",
+      "title": "Edit customer updates",
+      "seconds": 105,
+      "instructions": "Choose the edit that keeps the facts, timing and responsibility accurate. All versions may sound polite; use the case details to decide.",
+      "questions": [
+        {
+          "id": "f4a81e7f-e674-43de-8be5-5d2ba999f25b",
+          "prompt": "Which update preserves the refund status, your next action and the timing?",
+          "context": "Billing approved a $12 refund today, but it has not been submitted. You will submit it today. Bank posting normally takes 3–5 business days after processing.",
+          "options": [
+            "Your $12 refund has been approved. I've submitted it today; it should appear 3–5 business days after processing.",
+            "Your $12 refund has been approved. I'll submit it today; it should appear 3–5 business days after processing.",
+            "Your $12 refund has been approved. I'll submit it today; it should appear 3–5 business days after approval.",
+            "Your $12 refund has been approved. I'll submit it today; it will definitely appear within 3 business days."
+          ],
+          "optionIds": [
+            "c34094d0-a5be-499e-9059-65b0e185a329",
+            "f7d5eae1-505e-4283-aacd-e695345ca3e1",
+            "56428a42-69fd-47eb-b6e9-935412255e76",
+            "134c5ccd-d536-461f-ae2d-a8a0c16671e7"
+          ],
+          "correct": 1,
+          "explanation": "A changes a planned action into a completed one. C starts the period from the wrong event. D invents a guarantee and shortens the range. B preserves status, ownership and qualified timing. The options are grammatical; the discriminating skill is preserving operational meaning while editing. Spelling and grammar in actual writing are reviewed through the shared language criterion below.",
+          "correctOptionId": "f7d5eae1-505e-4283-aacd-e695345ca3e1"
+        },
+        {
+          "id": "21393970-3ea5-46a2-a649-0466a46ce75d",
+          "prompt": "Which ending makes the scope of the pause clear without changing either deadline?",
+          "context": "Only invoice 814 is under review. Collection of that invoice is paused until 18 October. Invoice 815 remains due on 12 October.\n\nDraft: “We've paused collection of invoice 814 until 18 October; ____.”",
+          "options": [
+            "invoice 815 is still due on 12 October",
+            "both invoices are now due on 18 October",
+            "payment for invoice 815 is paused while we review invoice 814",
+            "invoice 814 must still be paid on 12 October"
+          ],
+          "optionIds": [
+            "fbee3b24-50d0-4a5a-a339-fdf099c6372e",
+            "0297d998-3d6a-4894-824c-7218a0eb87ef",
+            "0da7600b-4a41-4bfd-aed3-150768714d95",
+            "cc20fe74-3dc8-420e-af44-13f6b5967a77"
+          ],
+          "correct": 0,
+          "explanation": "B incorrectly equates the end of a collection pause with two payment due dates. C extends the pause to the undisputed invoice. D transfers invoice 815's due date to invoice 814. A clearly limits the pause to the disputed invoice. This task tests precision of language and scope, not an unstated billing rule.",
+          "correctOptionId": "fbee3b24-50d0-4a5a-a339-fdf099c6372e"
+        }
+      ]
+    },
+    {
+      "id": "190d39f4-7719-4ee1-87f1-d9eece9a7e34",
+      "code": "CS02-v1.0",
+      "version": 1,
+      "kind": "typing",
+      "title": "Type an accurate case update",
+      "seconds": 90,
+      "instructions": "Copy the passage as accurately as you can. Include punctuation, numbers and capital letters. You may use Backspace to correct mistakes. The measured task lasts 60 seconds. You do not need to finish the passage. Your result shows speed and accuracy separately. This practice text is not scored.",
+      "passage": "Thank you for checking the delivery details. I have updated case 7318 to show that the parcel has not arrived. The courier scan is still under review, so I cannot confirm a delivery time yet. I will contact the courier and send you an update by 15:30 tomorrow, even if the investigation is still open. You do not need to place another order. If the parcel arrives before then, please reply to this message so we can close the enquiry. The delivery address on the order has not been changed. I have also recorded that your preferred contact method is email. Your case will remain with our support team until the next action is confirmed. Any new information from the courier will be added to the case notes.",
+      "practice": "Case 2048 is open. The next update is due at 14:30.",
+      "typingMode": "prefix-v1",
+      "targetWpm": 45
+    },
+    {
+      "id": "5202548d-ada9-41ce-9810-ba6e4bc709b5",
+      "code": "CS03-v1.0",
+      "version": 1,
+      "kind": "problem",
+      "title": "Apply a delivery policy",
+      "seconds": 135,
+      "instructions": "Read the policy and choose the best-supported action. New case information will appear after your first decision. You can revisit your decisions before submitting.",
+      "context": "Delivery policy\n1. For a parcel marked delivered but not received, confirm the address and ask the customer to check the nominated safe place and other household members\n2. Once at least 24 elapsed hours have passed since the delivered scan, open a courier trace if the checks have not located the parcel\n3. Once at least 48 elapsed hours have passed, and an opened trace remains unresolved, the customer may choose one replacement or a refund\n4. Do not issue both. Refunds go to the original payment method and normally appear within 5 business days after processing\n5. The case owner must send the next update within one business day, even if there is no new result",
+      "sequential": true,
+      "questions": [
+        {
+          "id": "4f957890-0820-42b0-8fb3-4dc622c83191",
+          "prompt": "What action is authorised now?",
+          "context": "It is Tuesday at 14:00. The courier marked the parcel delivered on Monday at 12:00, 26 hours ago. The verified customer has already confirmed the correct address, checked the safe place and spoken to the other adult in the household. The parcel is missing. No trace has been opened. The customer asks for a replacement today.",
+          "options": [
+            "Send a replacement because the customer has completed all the location checks",
+            "Open a courier trace, explain when the replacement/refund options become available, and set the next update within one business day",
+            "Wait until 48 hours have passed before opening a trace or contacting the customer again",
+            "Ask the customer to repeat all three location checks before opening a trace"
+          ],
+          "optionIds": [
+            "7590305c-6b77-4edb-a48d-939b7840fb04",
+            "dece5949-6586-418d-9a62-70ae795e1eef",
+            "081e6674-694e-440a-99a0-51939be0759b",
+            "13bfe7d6-6400-46fb-9347-c6c103f29a84"
+          ],
+          "correct": 1,
+          "explanation": "The 24-hour trace condition is met, but the 48-hour remedy condition is not. A acts too early. C delays an available investigation. D repeats completed checks with no new reason. The question supplies verification so that unstated authentication requirements do not create ambiguity.",
+          "correctOptionId": "dece5949-6586-418d-9a62-70ae795e1eef"
+        },
+        {
+          "id": "9f3d0559-6fce-4e84-98db-c4e4c6b1bcc2",
+          "prompt": "Which action and explanation match the policy?",
+          "context": "It is now Wednesday at 16:00, 52 hours after the scan. The trace opened on Tuesday remains unresolved. The customer asks for a refund rather than a replacement. No remedy has been issued.",
+          "options": [
+            "Ask the customer to wait until the courier closes the trace before considering a refund",
+            "Offer store credit only, because the parcel was scanned as delivered",
+            "Process a refund to the original payment method, explain the normal 5-business-day posting period, and record the chosen remedy",
+            "Process the refund and send a replacement to compensate for the inconvenience"
+          ],
+          "optionIds": [
+            "2d434a5e-afb6-4373-b06a-7b2577fc8b39",
+            "412d2f5f-8d5d-4fa1-8f32-59e6af1e16c8",
+            "8b75c543-92a3-4493-8efe-e43a108edf47",
+            "cf0e8247-0d34-4568-9455-0bf7721aceb2"
+          ],
+          "correct": 2,
+          "explanation": "All stated refund conditions are met and the customer has chosen the remedy. A adds an unsupported restriction, B substitutes an unauthorised remedy and D duplicates remedies. Do not treat Q2 as independent evidence of an entirely different competency; both decisions share a case.",
+          "correctOptionId": "8b75c543-92a3-4493-8efe-e43a108edf47"
+        }
+      ]
+    },
+    {
+      "id": "0b2cacb4-1cfd-41f4-9c9f-25cf7cae4f00",
+      "code": "CS06-v1.0",
+      "version": 1,
+      "kind": "writing",
+      "title": "Write a service recovery reply",
+      "seconds": 180,
+      "instructions": "Write a helpful customer email in your own words. Aim for 80–130 words; there is no automatic word-count penalty.",
+      "context": "Customer message\nI took yesterday off work for this delivery and nobody arrived. The last agent said it was definitely coming. I can't keep taking days off. Can you get it here by 15:00 today? If not, tell me what my options actually are.\n\nCase facts and policy\nIt is Friday at 10:00. The courier confirms that yesterday's delivery was missed\nThe order has not been delivered. No same-day slot is available; delivery by 15:00 today cannot be promised\nThe next bookable slot is Monday, 09:00–12:00; the customer must confirm before it is booked\nThe customer may instead cancel the undelivered order for a full refund to the original payment method; normal posting time is 5 business days after processing\nThe $12 delivery fee can be refunded if the customer keeps the order. Cancellation already includes that fee, so do not add a second fee refund\nYou own the case. If the customer has not replied, send a follow-up by 16:00 today",
+      "prompt": "Write the reply you would send now. Address the missed commitment, answer the 15:00 request, explain the available choices and make the next step clear. Include the follow-up commitment. Do not claim an action has already been completed if it still needs the customer's choice.",
+      "example": "I'm sorry you lost a day waiting, especially after being told the delivery was definite. I've checked with the courier, and delivery by 15:00 today isn't available. I can book Monday between 09:00 and 12:00 if that works for you and refund the $12 delivery fee. Alternatively, you can cancel for a full refund, including delivery, to your original payment method; this normally appears within five business days after processing. Which would you prefer? I'll keep ownership of the case and follow up by 16:00 today if I haven't heard from you.",
+      "rubric": [
+        {
+          "id": "accuracy",
+          "title": "Accuracy and boundaries",
+          "help": "Quote observable evidence from the response. Apply these task-specific anchors; natural wording is acceptable.",
+          "max": 3,
+          "anchors": [
+            "Promises 15:00 delivery, invents availability or claims a refund/booking is completed",
+            "Avoids the largest false promise but gives an incorrect remedy or materially misleading timing",
+            "Correctly rules out today and describes the main choices, with a minor omission",
+            "Correctly states Monday window and confirmation, cancellation/refund timing, and fee treatment without an unsupported action"
+          ]
+        },
+        {
+          "id": "empathy",
+          "title": "Acknowledgement and respect",
+          "help": "Quote observable evidence from the response. Apply these task-specific anchors; natural wording is acceptable.",
+          "max": 3,
+          "anchors": [
+            "Blames, dismisses or argues with the customer",
+            "Generic apology with little recognition of the actual problem",
+            "Recognises either the wasted time or the broken delivery promise respectfully",
+            "Specifically acknowledges the inconvenience and earlier certainty, without blaming another team or overdoing the apology"
+          ]
+        },
+        {
+          "id": "clarity",
+          "title": "Clarity and usable choice",
+          "help": "Quote observable evidence from the response. Apply these task-specific anchors; natural wording is acceptable.",
+          "max": 3,
+          "anchors": [
+            "Customer cannot tell what is available",
+            "One choice is understandable but the other or its condition is confusing",
+            "Both choices are understandable and the customer can respond",
+            "Concise, easy-to-scan choice between Monday plus fee refund and cancellation including the fee; asks a clear decision question"
+          ]
+        },
+        {
+          "id": "ownership",
+          "title": "Ownership and next step",
+          "help": "Quote observable evidence from the response. Apply these task-specific anchors; natural wording is acceptable.",
+          "max": 3,
+          "anchors": [
+            "Pushes the customer away or leaves no next step",
+            "Vague promise such as “we will look into it”",
+            "Owns the next step and asks for confirmation",
+            "Owns the case, explains what follows the choice and gives the 16:00 follow-up if no reply"
+          ]
+        },
+        {
+          "id": "language",
+          "title": "Written language",
+          "help": "Assess comprehensibility and accurate meaning. Accept regional spelling and contractions. Quote the issue for ratings 0 or 1; do not double-penalise a typo.",
+          "max": 3,
+          "anchors": [
+            "Meaning is not reliably recoverable: repeated sentence or word errors prevent the reviewer from understanding the action, condition or timing",
+            "Meaning requires repair: recurring grammar, spelling or punctuation errors force rereading or leave a material instruction ambiguous",
+            "Clear with minor slips: the customer or colleague can understand the message on first reading; occasional errors do not change the meaning",
+            "Professionally controlled: word choice, spelling, grammar and sentence structure consistently support a clear, accurate message, with at most trivial slips"
+          ]
+        }
+      ]
+    }
+  ],
+  "config": {
+    "flexible": true,
+    "workSeconds": 530,
+    "introductionSeconds": 60,
+    "code": "RES-CS-CORE-1.0",
+    "supportEmail": "",
+    "spellCheck": true,
+    "toolPolicy": "Use your own reasoning and writing, without AI or help from other people. Ordinary spelling tools are allowed for the customer email. Agreed assistive technology is allowed. Copy the typing passage yourself; practice is unscored.",
+    "notice": "Your assessment responses are saved for the hiring team to review. Contact the person who sent this link for an adjustment, technical help, or information about data retention and deletion.",
+    "stage": "pilot"
+  }
+}

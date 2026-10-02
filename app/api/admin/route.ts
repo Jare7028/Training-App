@@ -4,11 +4,11 @@ import { NextResponse } from 'next/server';
 import { sameOrigin } from '@/lib/request-origin';
 import { getAssessmentAdmin } from '@/app/admin-auth';
 import { allRows, firstRow, insertRow, updateRows, deleteExpiredPreviews, hashToken, RecordRow } from '@/db/store';
-import { Assessment, validateAssessment, scoreAttempt, rubric, Review, TestModule, cleanModule } from '@/lib/assessment';
+import { Assessment, validateAssessment, scoreAttempt, reviewCriteria, Review, TestModule, cleanModule } from '@/lib/assessment';
 export const dynamic = 'force-dynamic';
 const json = (data: unknown, status = 200) => NextResponse.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
-function assessment(r: RecordRow): Assessment { return { id: String(r.id), title: String(r.title), description: String(r.description), status: r.status as Assessment['status'], modules: JSON.parse(String(r.modules)), updatedAt: Number(r.updated_at), revision: Number(r.revision) }; }
-function attempt(r: RecordRow) { const snapshot = JSON.parse(String(r.snapshot)); return { id: r.id, assessmentId: r.assessment_id, title: snapshot.title, alias: r.alias, status: r.status, createdAt: r.created_at, startedAt: r.started_at, deadline: r.deadline, completedAt: r.result ? JSON.parse(String(r.result)).completedAt : null, modules: snapshot.modules, answers: JSON.parse(String(r.answers)), result: r.result ? JSON.parse(String(r.result)) : null, review: r.review ? JSON.parse(String(r.review)) : null, expiresAt: r.expires_at, revoked: !!r.revoked, revision: r.revision }; }
+function assessment(r: RecordRow): Assessment { return { id: String(r.id), title: String(r.title), description: String(r.description), status: r.status as Assessment['status'], modules: JSON.parse(String(r.modules)), updatedAt: Number(r.updated_at), revision: Number(r.revision), config: r.config ? JSON.parse(String(r.config)) : undefined }; }
+function attempt(r: RecordRow) { const snapshot = JSON.parse(String(r.snapshot)); return { id: r.id, assessmentId: r.assessment_id, title: snapshot.title, alias: r.alias, status: r.status, createdAt: r.created_at, startedAt: r.started_at, deadline: r.deadline, completedAt: r.result ? JSON.parse(String(r.result)).completedAt : null, modules: snapshot.modules, config: snapshot.config, answers: JSON.parse(String(r.answers)), result: r.result ? JSON.parse(String(r.result)) : null, review: r.review ? JSON.parse(String(r.review)) : null, expiresAt: r.expires_at, revoked: !!r.revoked, revision: r.revision }; }
 export async function GET() {
     try {
         const user = await getAssessmentAdmin();
@@ -66,6 +66,7 @@ export async function POST(request: Request) {
             alias: string;
             revision: number;
             review: Review;
+            extraSeconds?: number;
         };
         const owner = user.userId;
         const now = Date.now();
@@ -73,7 +74,7 @@ export async function POST(request: Request) {
             const contentModule = body.module;
             const error = validateAssessment({ id: '', title: contentModule?.title, description: '', status: 'ready', modules: [contentModule], updatedAt: now, revision: 1 }, true);
             if (error) return json({ error }, 400);
-            const content = JSON.stringify(cleanModule(contentModule));
+            const content = JSON.stringify({ ...cleanModule(contentModule), ...(contentModule.code ? {version: body.id ? Number(body.revision) + 1 : 1} : {}) });
             if (body.id) {
                 const row = await firstRow('modules', { id: String(body.id), owner });
                 if (!row) return json({ error: 'Module not found.' }, 404);
@@ -98,19 +99,19 @@ export async function POST(request: Request) {
             const error = validateAssessment(a, a.status === 'ready');
             if (error)
                 return json({ error }, 400);
-            a.modules = a.modules.map(cleanModule);
+            a.modules = a.modules.map(m => ({ ...cleanModule(m), ...(m.code ? {version: Number(a.revision || 0) + 1} : {}) }));
             const existing = a.id ? await firstRow('assessments', { id: a.id, owner }) : null;
             if (a.id && !existing) return json({ error: 'Assessment not found.' }, 404);
             if (existing) {
                 if (existing.revision !== a.revision)
                     return json({ error: 'This test changed in another tab. Reload it before saving.' }, 409);
-                const r = await updateRows('assessments', { title: a.title.trim(), description: a.description, status: a.status, modules: JSON.stringify(a.modules), updated_at: now, revision: a.revision + 1 }, { id: a.id, owner, revision: a.revision });
+                const r = await updateRows('assessments', { title: a.title.trim(), description: a.description, status: a.status, modules: JSON.stringify(a.modules), config: a.config ? JSON.stringify(a.config) : null, updated_at: now, revision: a.revision + 1 }, { id: a.id, owner, revision: a.revision });
                 if (!r)
                     return json({ error: 'This test changed. Reload before saving.' }, 409);
                 return json({ id: a.id });
             }
             const id = crypto.randomUUID();
-            await insertRow('assessments', { id, owner, title: a.title.trim(), description: a.description, status: a.status, modules: JSON.stringify(a.modules), updated_at: now, revision: 1 });
+            await insertRow('assessments', { id, owner, title: a.title.trim(), description: a.description, status: a.status, modules: JSON.stringify(a.modules), config: a.config ? JSON.stringify(a.config) : null, updated_at: now, revision: 1 });
             return json({ id });
         }
         if (body.action === 'link' || body.action === 'preview') {
@@ -121,6 +122,8 @@ export async function POST(request: Request) {
             if (!row)
                 return json({ error: 'Assessment not found.' }, 404);
             const test = assessment(row);
+            if (body.extraSeconds !== undefined && (!Number.isInteger(body.extraSeconds) || body.extraSeconds < 0 || body.extraSeconds > 1800 || !test.config?.flexible)) return json({ error: 'Extra time requires a shared-timer assessment (0–1,800 seconds).' }, 400);
+            if (test.config && body.extraSeconds) test.config = { ...test.config, workSeconds: test.config.workSeconds + body.extraSeconds, adjustmentSeconds: body.extraSeconds };
             if (test.status !== 'ready')
                 return json({ error: 'Mark the test ready before creating a link.' }, 400);
             const id = crypto.randomUUID();
@@ -139,12 +142,15 @@ export async function POST(request: Request) {
             if (row.revision !== body.revision)
                 return json({ error: 'The review changed in another tab. Reload it before saving.' }, 409);
             const review = body.review;
-            if (!review || !['reviewed', 'follow-up'].includes(review.outcome) || typeof review.notes !== 'string' || review.notes.trim().length < 5 || review.notes.length > 5000)
+            if (!review || !['reviewed', 'follow-up', 'not-scorable'].includes(review.outcome) || typeof review.notes !== 'string' || review.notes.trim().length < 5 || review.notes.length > 5000)
                 return json({ error: 'Add an evidence-based review note (5–5,000 characters).' }, 400);
             const snapshot = JSON.parse(String(row.snapshot));
-            if (snapshot.modules.some((m: TestModule) => m.kind === 'writing') && rubric.some(r => !Number.isInteger(review.ratings?.[r.id]) || review.ratings[r.id] < 0 || review.ratings[r.id] > 4))
-                return json({ error: 'Rate all four writing criteria from 0 to 4.' }, 400);
-            const clean = { ratings: Object.fromEntries(rubric.filter(r => typeof review.ratings?.[r.id] === 'number').map(r => [r.id, review.ratings[r.id]])), notes: review.notes.trim(), outcome: review.outcome, reviewedAt: now };
+            const criteria = reviewCriteria(snapshot.modules);
+            if (review.outcome !== 'not-scorable' && criteria.some(r => !Number.isInteger(review.ratings?.[r.key]) || review.ratings[r.key] < 0 || review.ratings[r.key] > r.max)) return json({ error: 'Rate each writing criterion using its displayed scale.' }, 400);
+            if (review.outcome !== 'not-scorable' && criteria.some(r => r.key.includes(':') && (typeof review.evidence?.[r.key] !== 'string' || !review.evidence[r.key].trim() || review.evidence[r.key].length > 2000))) return json({ error: 'Add evidence for each writing criterion.' }, 400);
+            const previous: Review | null = row.review ? JSON.parse(String(row.review)) : null;
+            const { history: oldHistory, ...previousEntry } = previous || {};
+            const clean = { ratings: review.outcome === 'not-scorable' ? {} : Object.fromEntries(criteria.filter(r => typeof review.ratings?.[r.key] === 'number').map(r => [r.key, review.ratings[r.key]])), evidence: Object.fromEntries(criteria.filter(r => typeof review.evidence?.[r.key] === 'string').map(r => [r.key, review.evidence![r.key].trim()])), notes: review.notes.trim(), outcome: review.outcome, reviewedAt: now, reviewer: user.email, history: previous ? [...(oldHistory || []), previousEntry] : [] };
             const r = await updateRows('attempts', { review: JSON.stringify(clean), revision: body.revision + 1 }, { id: body.id, owner, revision: body.revision });
             if (!r)
                 return json({ error: 'This review changed. Reload before saving.' }, 409);

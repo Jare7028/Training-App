@@ -20,7 +20,11 @@
     "test:workflow": "python3 tests/workflow-qa.py",
     "test:browser": "node tests/browser-qa.mjs",
     "test:supabase": "node tests/supabase-qa.mjs",
-    "dev:local": "node scripts/local-dev.mjs"
+    "dev:local": "node scripts/local-dev.mjs",
+    "build:local": "node scripts/local-dev.mjs build",
+    "start:local": "node scripts/local-dev.mjs start",
+    "test:core": "node tests/typing-metrics.mjs && python3 tests/core-workflow.py",
+    "test:core:browser": "node tests/core-browser.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
