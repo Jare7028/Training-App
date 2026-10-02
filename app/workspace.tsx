@@ -1,0 +1,240 @@
+'use client';
+import { cloneElement, isValidElement, useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
+import { LayoutGrid, Users, Library, Plus, Clock, Check, Keyboard, SpellCheck, MessageSquare, Brain, ChevronUp, ChevronDown, Copy, ExternalLink, ShieldCheck, FileText, Search, RefreshCw, Trash2, CheckCircle2, Lock, Download } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from '@/components/ui/table';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
+import { Toaster } from '@/components/ui/sonner';
+import { toast } from 'sonner';
+import { Assessment, Attempt, TestModule, ModuleKind, Question, Review, kindLabels, copyModule, SavedModule, duration, formatTime, rubric, validateAssessment } from '@/lib/assessment';
+const icons = { spelling: SpellCheck, grammar: FileText, typing: Keyboard, problem: Brain, writing: MessageSquare };
+const kinds = Object.keys(kindLabels) as ModuleKind[];
+const nav = [{ id: 'tests', title: 'Assessments', icon: LayoutGrid }, { id: 'candidates', title: 'Candidate review', icon: Users }, { id: 'library', title: 'Module library', icon: Library }];
+const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
+const fmtDate = (n: number) => new Date(n).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+async function request(body: unknown) { const r = await fetch('/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); const data = await r.json() as {
+    error: string;
+    id: string;
+    path: string;
+}; if (!r.ok)
+    throw new Error(data.error || 'Unable to save.'); return data; }
+function ModuleIcon({ kind }: {
+    kind: ModuleKind;
+}) { const Icon = icons[kind]; return <span className={`module-icon kind-${kind}`}><Icon size={20}/></span>; }
+function Status({ value }: {
+    value: string;
+}) { return <span className={`status status-${value}`}>{value === 'ready' ? 'Ready' : value === 'draft' ? 'Draft' : value === 'completed' ? 'Submitted' : value === 'in-progress' ? 'In progress' : value === 'not-started' ? 'Not started' : value === 'follow-up' ? 'Follow-up' : 'Reviewed'}</span>; }
+function Field({ label, help, children }: {
+    label: string;
+    help?: string;
+    children: React.ReactNode;
+}) { return <label className="field"><span>{label}</span>{isValidElement(children) ? cloneElement(children as React.ReactElement<{ "aria-label"?: string }>, { "aria-label": label }) : children}{help && <small>{help}</small>}</label>; }
+function ChoiceSelect({ value, onChange, options, label }: {
+    value: string;
+    onChange: (v: string) => void;
+    options: {
+        value: string;
+        label: string;
+    }[];
+    label: string;
+}) { return <Select value={value} onValueChange={onChange}><SelectTrigger aria-label={label} className="select-field"><SelectValue /></SelectTrigger><SelectContent>{options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>; }
+export default function Admin() {
+    const [page, setPage] = useState('tests');
+    const [presets, setPresets] = useState<TestModule[]>([]);
+    const template = (kind: ModuleKind) => copyModule(presets.find(m => m.kind === kind)!);
+    const [library, setLibrary] = useState<SavedModule[]>([]);
+    const [libraryEdit, setLibraryEdit] = useState<{ id: string; revision: number } | null>(null);
+    const [createModule, setCreateModule] = useState(false);
+    const [tests, setTests] = useState<Assessment[]>([]);
+    const [attempts, setAttempts] = useState<Attempt[]>([]);
+    const [loaded, setLoaded] = useState(false);
+    const [error, setError] = useState('');
+    const [user, setUser] = useState('');
+    const [editing, setEditing] = useState<Assessment | null>(null);
+    const [initial, setInitial] = useState('');
+    const [discard, setDiscard] = useState(false);
+    const [busy, setBusy] = useState(false);
+    const [create, setCreate] = useState(false);
+    const [linkTest, setLinkTest] = useState<Assessment | null>(null);
+    const [alias, setAlias] = useState('');
+    const [link, setLink] = useState('');
+    const [active, setActive] = useState<Attempt | null>(null);
+    const [query, setQuery] = useState('');
+    const [filter, setFilter] = useState('all');
+    const load = useCallback(async () => { try {
+        const r = await fetch('/api/admin');
+        const d = await r.json() as {
+            error: string;
+            presets: TestModule[];
+            library: SavedModule[];
+            assessments: Assessment[];
+            attempts: Attempt[];
+            user: string;
+        };
+        if (!r.ok)
+            throw new Error(d.error);
+        setPresets(d.presets);
+        setLibrary(d.library);
+        setTests(d.assessments);
+        setAttempts(d.attempts);
+        setActive(current => current ? d.attempts.find(a => a.id === current.id) || null : null);
+        setUser(d.user);
+        setError('');
+        setLoaded(true);
+        return d;
+    }
+    catch (e) {
+        setError((e as Error).message);
+        setLoaded(true);
+        return null;
+    } }, []);
+    useEffect(() => { const timer = setTimeout(() => void load(), 0); return () => clearTimeout(timer); }, [load]);
+    useEffect(() => { if (!editing)
+        return; const handler = (e: BeforeUnloadEvent) => { if (JSON.stringify(editing) !== initial) {
+        e.preventDefault();
+    } }; window.addEventListener('beforeunload', handler); return () => window.removeEventListener('beforeunload', handler); }, [editing, initial]);
+    useEffect(() => { const model = (document as unknown as {
+        modelContext?: {
+            registerTool: (t: unknown, o: unknown) => void;
+        };
+    }).modelContext; if (!model)
+        return; const controller = new AbortController(); model.registerTool({ name: 'read_assessment_workspace', title: 'Read assessment workspace', description: 'Read the loaded assessment titles, time budgets and candidate review counts. This does not modify anything.', inputSchema: { type: 'object', properties: {}, additionalProperties: false }, annotations: { readOnlyHint: true, untrustedContentHint: true }, execute: (input: unknown) => { if (!input || typeof input !== 'object' || Object.keys(input).length)
+            throw new Error('Expected an empty object.'); return { assessments: tests.map(t => ({ id: t.id, title: t.title, status: t.status, seconds: duration(t.modules) })), submitted: attempts.filter(a => a.status === 'completed').length, awaitingReview: attempts.filter(a => a.status === 'completed' && !a.review).length }; } }, { signal: controller.signal }); return () => controller.abort(); }, [tests, attempts]);
+    const openEdit = (t: Assessment) => { setLibraryEdit(null); const v = clone(t); setEditing(v); setInitial(JSON.stringify(v)); };
+    const leaveEdit = () => { if (editing && JSON.stringify(editing) !== initial)
+        setDiscard(true);
+    else
+        setEditing(null); };
+    const run = async (fn: () => Promise<unknown>) => { if (busy)
+        return; setBusy(true); try {
+        await fn();
+    }
+    catch (e) {
+        toast.error((e as Error).message);
+    }
+    finally {
+        setBusy(false);
+    } };
+    const editModule = (m: TestModule, record?: SavedModule) => {
+        const a: Assessment = { id: '', title: m.title, description: '', status: 'ready', modules: [clone(m)], updatedAt: 0, revision: 0 };
+        openEdit(a); setLibraryEdit({ id: record?.id || '', revision: record?.revision || 0 }); setPage('library');
+    };
+    const save = (status: 'draft' | 'ready') => run(async () => {
+        if (!editing) return;
+        if (libraryEdit) {
+            await request({ action: 'save-module', id: libraryEdit.id, revision: libraryEdit.revision, module: editing.modules[0] });
+            await load(); setEditing(null); setLibraryEdit(null); toast.success('Module saved to your library.'); return;
+        }
+        const a = { ...editing, status }; const err = validateAssessment(a, status === 'ready');
+        if (err) throw new Error(err);
+        await request({ action: 'save', assessment: a }); await load(); setEditing(null); setPage('tests'); toast.success(status === 'ready' ? 'Assessment ready.' : 'Draft saved.');
+    });
+    const preview = (t: Assessment) => run(async () => {
+        const d = await request({ action: 'preview', id: t.id }); window.location.assign(d.path);
+    });
+    const candidateLink = (t: Assessment) => { setLinkTest(t); setLink(''); setAlias(''); };
+    const createLink = () => run(async () => {
+        if (!linkTest) return;
+        const d = await request({ action: 'link', id: linkTest.id, alias }); setLink(window.location.origin + d.path); await load(); toast.success('Candidate link created.');
+    });
+    const copy = async () => { try {
+        await navigator.clipboard.writeText(link);
+        toast.success('Link copied.');
+    }
+    catch {
+        toast.error('Select the link and copy it manually.');
+    } };
+    const pending = attempts.filter(a => a.status === 'completed' && !a.review).length;
+    const completed = attempts.filter(a => a.status === 'completed');
+    const visible = attempts.filter(a => (a.alias + ' ' + a.title).toLowerCase().includes(query.toLowerCase()) && (filter === 'all' || (filter === 'pending' ? a.status === 'completed' && !a.review : filter === 'reviewed' ? !!a.review : a.status !== 'completed')));
+    const candidates = (rows: Attempt[]) => <Table><TableHeader><TableRow><TableHead>Candidate</TableHead><TableHead>Assessment</TableHead><TableHead>Objective score</TableHead><TableHead>Writing review</TableHead><TableHead>Received</TableHead><TableHead><span className="sr-only">Actions</span></TableHead></TableRow></TableHeader><TableBody>{rows.map(a => <TableRow key={a.id}><TableCell><div className="candidate-cell"><span className="avatar">{a.alias.split(' ').map(s => s[0]).slice(0, 2).join('')}</span><div><strong>{a.alias}</strong><small>{a.revoked ? "Link revoked" : "Candidate"}</small></div></div></TableCell><TableCell>{a.title}</TableCell><TableCell>{a.result?.objective != null ? <span className="score-inline">{a.result.objective}<small>/100</small></span> : <Status value={a.status}/>}</TableCell><TableCell>{a.status !== 'completed' ? <span className="muted">Not submitted</span> : a.review ? <Status value={a.review.outcome}/> : <span className="awaiting">Awaiting review</span>}</TableCell><TableCell>{fmtDate(a.createdAt)}</TableCell><TableCell><Button variant="outline" onClick={() => setActive(a)} aria-label={`Review ${a.alias}`}>{a.status === 'completed' ? 'Review' : 'View'}</Button>{a.status !== 'completed' && !a.revoked && <Button variant="ghost" disabled={busy} aria-label={`Revoke link for ${a.alias}`} onClick={() => run(async () => { await request({ action: 'revoke', id: a.id, revision: a.revision }); await load(); toast.success('Candidate link revoked.'); })}>Revoke link</Button>}</TableCell></TableRow>)}{!rows.length && <TableRow><TableCell colSpan={6}><div className="empty-block">No candidates match this view</div></TableCell></TableRow>}</TableBody></Table>;
+    return <SidebarProvider><Sidebar className="assess-sidebar"><SidebarHeader><Link className="brand" href="/" prefetch={false} onClick={e => { if (editing) {
+        e.preventDefault();
+        leaveEdit();
+    } }} aria-label="Resolvable Assess home"><span className="brand-symbol">r</span><div><strong>resolvable</strong><small>Assess</small></div></Link><div className="workspace-label">RECRUITMENT WORKSPACE</div></SidebarHeader><SidebarContent><SidebarMenu>{nav.map(n => <SidebarMenuItem key={n.id}><SidebarMenuButton isActive={page === n.id && !editing} onClick={() => { if (editing) {
+        leaveEdit();
+        return;
+    } setPage(n.id); }} className="nav-item"><n.icon /><span>{n.title}</span>{n.id === 'candidates' && pending > 0 && <span className="nav-count">{pending}</span>}</SidebarMenuButton></SidebarMenuItem>)}</SidebarMenu><div className="sidebar-note"><ShieldCheck size={23}/><strong>People make the decision</strong><p>Useful evidence, consistent questions, human judgment</p></div></SidebarContent><SidebarFooter><div className="sidebar-user"><span className="avatar">R</span><div><strong>Resolvable team</strong><small>{user || 'Recruiter'}</small></div></div><form action="/auth/signout" method="post"><Button variant="ghost" type="submit">Sign out</Button></form></SidebarFooter></Sidebar><SidebarInset className="app-main"><header className="topbar"><div><SidebarTrigger /><span>Workspace</span><span className="crumb">/</span><strong>{editing ? 'Assessment builder' : nav.find(n => n.id === page)?.title}</strong></div><span className="private-pill"><Lock size={14}/>Admin workspace</span></header><main className="main-content">
+ {error && <div className="error-panel" role="alert"><strong>Couldn’t load the workspace</strong><p>{error}</p><Button onClick={() => void load()} variant="outline"><RefreshCw size={16}/>Retry</Button></div>}
+ {!loaded ? <div className="loading-grid"><Skeleton className="h-12 w-72"/><Skeleton className="h-64 w-full"/></div> : editing ? <Builder key={initial} presets={presets} library={library} moduleOnly={!!libraryEdit} assessment={editing} setAssessment={setEditing} onClose={leaveEdit} onSave={save} busy={busy}/> : <>
+ {page === 'tests' && <><div className="page-heading"><div><div className="eyebrow">HIRING, WITH EVIDENCE</div><h1>Assessments</h1><p>Short work samples for people who help your customers</p></div><Button className="primary-action" onClick={() => setCreate(true)}><Plus />Create assessment</Button></div><div className="stats-row"><div><span>Assessments</span><strong>{tests.length}</strong><small>{tests.filter(t => t.status === 'ready').length} ready to preview</small></div><div><span>Submitted work samples</span><strong>{completed.length}</strong><small>Candidate submissions</small></div><div><span>Awaiting human review</span><strong>{pending}<span className="stat-accent"> replies</span></strong><button className="text-button" onClick={() => setPage('candidates')}>Open review queue</button></div></div>
+ {!tests.length ? <section className="start-panel"><ModuleIcon kind="writing"/><h2>Build your first support assessment</h2><p>Create a nine-minute assessment or build one from your module library.</p><div className="button-row"><Button onClick={() => setCreate(true)}>Create assessment</Button><Button variant="outline" onClick={() => { setCreate(true); }}>Build from scratch</Button></div></section> : <div className="assessment-grid">{tests.map(t => <article className="assessment-card" key={t.id}><div className="card-title-row"><span className="test-glyph"><FileText size={23}/></span><Status value={t.status}/></div><h2>{t.title}</h2><p>{t.description || 'A custom customer-support assessment'}</p><div className="module-strip">{t.modules.map(m => <span key={m.id} title={m.title}><ModuleIcon kind={m.kind}/></span>)}{!t.modules.length && <span className="muted">No modules yet</span>}</div><div className="assessment-meta"><span><Clock size={16}/>{formatTime(duration(t.modules))} total</span><span>{t.modules.length} modules</span><span>v{t.revision}</span></div><div className="card-actions"><Button variant="outline" onClick={() => openEdit(t)}>Edit assessment</Button><Button variant="outline" disabled={busy || t.status !== 'ready'} onClick={() => preview(t)}>Preview test</Button><Button disabled={t.status !== 'ready'} onClick={() => candidateLink(t)}>Create candidate link</Button></div></article>)}</div>}
+ {completed.length > 0 && <section className="results-section"><div className="section-heading"><div><h2>Recent submissions</h2><p>Objective results are ready. Read the replies before making a decision.</p></div><button className="text-button" onClick={() => setPage('candidates')}>View all candidates</button></div><div className="table-panel">{candidates(completed.slice(0, 4))}</div></section>}
+ <div className="quiet-footer"><Clock size={16}/><span>Standard assessments are limited to 10 minutes. Every candidate link freezes the test and answer key.</span></div></>}
+ {page === 'candidates' && <><div className="page-heading"><div><div className="eyebrow">REVIEW THE WORK, THEN DECIDE</div><h1>Candidate review</h1><p>Read responses alongside transparent, question-level evidence</p></div><Button variant="outline" onClick={() => void load()}><RefreshCw size={16}/>Refresh</Button></div><div className="filter-bar"><div className="search-field"><Search size={18}/><Input value={query} onChange={e => setQuery(e.target.value)} placeholder="Find a candidate or assessment" aria-label="Search candidates"/></div><ChoiceSelect label="Review status" value={filter} onChange={setFilter} options={[{ value: 'all', label: 'All candidates' }, { value: 'pending', label: 'Awaiting review' }, { value: 'reviewed', label: 'Reviewed' }, { value: 'active', label: 'Not submitted' }]}/></div><div className="table-panel">{candidates(visible)}</div><p className="method-note">Objective scores average the automatic modules. Written responses are reviewed separately.</p></>}
+ {page === 'library' && <><div className="page-heading"><div><h1>Module library</h1><p>Save modules and reuse them in any assessment.</p></div><Button onClick={() => setCreateModule(true)}><Plus />Create module</Button></div>
+ {!library.length && <section className="start-panel"><Library size={32}/><h2>Create your first module</h2><p>Choose a scenario, tailor it to your policy, and save it here.</p><Button onClick={() => setCreateModule(true)}>Create module</Button></section>}
+ <div className="library-grid">{library.map(record => <article className="library-card" key={record.id}><ModuleIcon kind={record.module.kind}/><div><h2>{record.module.title}</h2><span className="small-tag">{record.module.kind === 'writing' ? 'Human review' : 'Automatic scoring'}</span></div><p>{record.module.instructions}</p><div className="library-meta"><Clock size={15}/>{formatTime(record.module.seconds)} · v{record.revision}</div><div className="button-row"><Button variant="outline" onClick={() => editModule(record.module, record)}>Edit module</Button><Button onClick={() => openEdit({ id: '', title: `${record.module.title} assessment`, description: '', status: 'draft', modules: [copyModule(record.module)], updatedAt: Date.now(), revision: 0 })}>Build assessment</Button></div></article>)}</div></>}
+
+ </>}
+ </main></SidebarInset>
+ <Dialog open={create} onOpenChange={setCreate}><DialogContent className="create-dialog"><DialogHeader><DialogTitle>Create an assessment</DialogTitle><DialogDescription>Choose a starting point. Everything is editable.</DialogDescription></DialogHeader><button className="creation-option" onClick={() => { const a: Assessment = { id: '', title: 'Customer support essentials', description: 'A short, practical work sample for written customer-service roles.', status: 'draft', modules: kinds.map(template), updatedAt: Date.now(), revision: 0 }; openEdit(a); setCreate(false); }}><span className="test-glyph"><MessageSquare /></span><div><strong>Customer support essentials</strong><p>Accuracy, prioritisation, typing, investigation and a written reply</p><small>9 minutes · 5 modules</small></div></button><button className="creation-option" onClick={() => { openEdit({ id: '', title: 'Untitled assessment', description: '', status: 'draft', modules: [], updatedAt: Date.now(), revision: 0 }); setCreate(false); }}><span className="test-glyph"><Plus /></span><div><strong>Start from scratch</strong><p>Add only the skills your role needs</p><small>Empty canvas · Fully customizable</small></div></button></DialogContent></Dialog>
+ <Dialog open={createModule} onOpenChange={setCreateModule}><DialogContent className="module-dialog"><DialogHeader><DialogTitle>Create a module</DialogTitle><DialogDescription>Choose a starting scenario. Edit it before saving.</DialogDescription></DialogHeader><div className="add-module-grid">{kinds.map(k => <Button variant="outline" key={k} onClick={() => { editModule(template(k)); setCreateModule(false); }}><ModuleIcon kind={k}/>{kindLabels[k]}</Button>)}</div></DialogContent></Dialog>
+ <Dialog open={!!linkTest} onOpenChange={v => { if (!v) setLinkTest(null); }}><DialogContent><DialogHeader><DialogTitle>Create candidate link</DialogTitle><DialogDescription>{linkTest?.title} · {formatTime(duration(linkTest?.modules || []))}</DialogDescription></DialogHeader>{!link ? <><Field label="Candidate name or reference"><Input value={alias} maxLength={80} onChange={e => setAlias(e.target.value)}/></Field><p>Valid for seven days. Anyone with this link can complete this assigned attempt without signing in.</p><Button disabled={busy || !alias.trim()} onClick={createLink}>Create candidate link</Button></> : <><Field label="Candidate assessment link"><Input value={link} readOnly onFocus={e => e.target.select()}/></Field><div className="button-row"><Button variant="outline" onClick={copy}><Copy size={16}/>Copy link</Button><Button asChild><a href={link} target="_blank" rel="noopener noreferrer"><ExternalLink size={16}/>Open candidate view</a></Button></div></>}</DialogContent></Dialog>
+ <AlertDialog open={discard} onOpenChange={setDiscard}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle><AlertDialogDescription>Your saved assessment and existing candidate links will stay as they are.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Keep editing</AlertDialogCancel><AlertDialogAction onClick={() => { setEditing(null); setDiscard(false); }}>Discard changes</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+ <Sheet open={!!active} onOpenChange={v => { if (!v)
+        setActive(null); }}><SheetContent className="review-sheet"><SheetHeader><SheetTitle>{active?.alias}</SheetTitle><SheetDescription>{active?.title}</SheetDescription></SheetHeader>{active && <ReviewPanel key={active.id} attempt={active} busy={busy} onSave={review => run(async () => { await request({ action: 'review', id: active.id, revision: active.revision, review }); const d = await load(); if (d)
+        setActive(d.attempts.find((a: Attempt) => a.id === active.id) || null); toast.success('Review saved with your evidence and ratings.'); })}/>}</SheetContent></Sheet><Toaster position="bottom-right"/></SidebarProvider>;
+}
+function Builder({ assessment: a, setAssessment, onClose, onSave, busy, library, presets, moduleOnly }: {
+    library: SavedModule[];
+    presets: TestModule[];
+    moduleOnly: boolean;
+    assessment: Assessment;
+    setAssessment: (a: Assessment) => void;
+    onClose: () => void;
+    onSave: (s: 'draft' | 'ready') => void;
+    busy: boolean;
+}) {
+    const template = (kind: ModuleKind) => copyModule(presets.find(m => m.kind === kind)!);
+    const [selected, setSelected] = useState(a.modules[0]?.id || '');
+    const [adding, setAdding] = useState(false);
+    const [remove, setRemove] = useState('');
+    const [builderTab, setBuilderTab] = useState('edit');
+    const active = a.modules.find(m => m.id === selected);
+    const total = duration(a.modules);
+    const update = (patch: Partial<Assessment>) => setAssessment({ ...a, ...patch });
+    const change = (patch: Partial<TestModule>) => active && update({ modules: a.modules.map(m => m.id === active.id ? { ...m, ...patch } : m) });
+    const add = (kind: ModuleKind, blank = false) => { const m = template(kind); if (blank && m.questions)
+        m.questions = [{ id: crypto.randomUUID(), prompt: '', options: ['', ''], correct: 0, explanation: '' }]; if (blank && kind === 'writing') {
+        m.context = '';
+        m.prompt = '';
+    } update({ modules: [...a.modules, m] }); setSelected(m.id); setAdding(false); };
+    const move = (id: string, delta: number) => { const mods = [...a.modules]; const i = mods.findIndex(m => m.id === id); if (i + delta < 0 || i + delta >= mods.length)
+        return; [mods[i], mods[i + delta]] = [mods[i + delta], mods[i]]; update({ modules: mods }); };
+    const qChange = (id: string, patch: Partial<Question>) => change({ questions: active?.questions?.map(q => q.id === id ? { ...q, ...patch } : q) });
+    return <><div className="page-heading builder-heading"><div><button className="text-button" onClick={onClose}>{moduleOnly ? 'Back to module library' : 'Back to assessments'}</button><h1>{moduleOnly ? 'Module editor' : 'Assessment builder'}</h1></div><div className="button-row"><Button variant="outline" onClick={() => onSave('draft')} disabled={busy || moduleOnly} hidden={moduleOnly}>Save draft</Button><Button onClick={() => onSave('ready')} disabled={busy || total > 600}>{moduleOnly ? 'Save module' : 'Save & mark ready'}</Button></div></div><div className="builder-basics" hidden={moduleOnly}><Field label="Assessment title"><Input value={a.title} maxLength={120} onChange={e => update({ title: e.target.value })}/></Field><Field label="Candidate introduction"><Input value={a.description} maxLength={1000} onChange={e => update({ description: e.target.value })} placeholder="A short explanation of what this test covers"/></Field></div><div className="builder-layout"><section className="builder-outline"><div className="outline-heading"><strong>Test modules</strong><span>{a.modules.length}</span></div><div className="budget"><div><span>Total time budget</span><strong className={total > 600 ? 'over-budget' : ''}>{formatTime(total)}<small>/ 10:00</small></strong></div><Progress aria-label="Assessment time budget" value={Math.min(100, total / 6)} className={total > 600 ? 'over-progress' : ''}/><small>{total > 600 ? 'Remove time before marking ready' : `${600 - total} seconds available`}</small></div><ol className="module-list">{a.modules.map((m, i) => <li className={selected === m.id ? 'selected' : ''} key={m.id}><button className="module-select" onClick={() => setSelected(m.id)}><span className="module-number">{i + 1}</span><ModuleIcon kind={m.kind}/><div><strong>{m.title}</strong><small>{formatTime(m.seconds)} · {m.kind === 'writing' ? 'Human review' : 'Auto-scored'}</small></div></button><div className="module-order"><button disabled={i === 0} onClick={() => move(m.id, -1)} aria-label={`Move ${m.title} up`}><ChevronUp size={16}/></button><button disabled={i === a.modules.length - 1} onClick={() => move(m.id, 1)} aria-label={`Move ${m.title} down`}><ChevronDown size={16}/></button></div></li>)}</ol><Button variant="outline" className="add-module" disabled={moduleOnly || a.modules.length >= 12} onClick={() => setAdding(true)}><Plus size={18}/>Add module</Button><div className="outline-note"><Lock size={16}/><p>Existing candidate links keep their original questions, timing and answer key when you edit this test.</p></div></section><section className="builder-editor">{!active ? <div className="empty-editor"><Plus size={30}/><h2>Add your first module</h2><p>Start from a reusable element or write your own questions.</p><Button onClick={() => setAdding(true)}>Choose a module</Button></div> : <><div className="editor-heading"><ModuleIcon kind={active.kind}/><div><h2>{kindLabels[active.kind]}</h2><p>{active.kind === 'writing' ? 'Evidence-based human review' : 'Automatic scoring with visible evidence'}</p></div><Button variant="ghost" size="icon" hidden={moduleOnly} aria-label={`Remove ${active.title}`} onClick={() => setRemove(active.id)}><Trash2 size={18}/></Button></div><Tabs value={builderTab} onValueChange={setBuilderTab}><TabsList variant="line" className="editor-tabs"><TabsTrigger value="edit">Edit content</TabsTrigger><TabsTrigger value="preview">Candidate preview</TabsTrigger><TabsTrigger value="scoring">Scoring method</TabsTrigger></TabsList><TabsContent value="edit"><div className="edit-fields"><div className="two-fields"><Field label="Module title"><Input value={active.title} maxLength={120} onChange={e => change({ title: e.target.value })}/></Field><Field label="Time limit (seconds)"><Input type="number" min={15} max={600} value={active.seconds} onChange={e => change({ seconds: Number(e.target.value) })}/></Field></div><Field label="Candidate instructions"><Textarea value={active.instructions} maxLength={2000} onChange={e => change({ instructions: e.target.value })}/></Field>
+ {active.kind !== 'typing' && <Field label="Policy / reference material" help="Only facts supplied here should be needed to answer."><Textarea rows={6} maxLength={8000} value={active.context || ''} onChange={e => change({ context: e.target.value })}/></Field>}
+ {active.questions?.map((q, i) => <div className="question-editor" key={q.id}><div className="question-heading"><strong>Question {i + 1}</strong>{(active.questions?.length || 0) > 1 && <Button variant="ghost" size="icon" aria-label={`Delete question ${i + 1}`} onClick={() => change({ questions: active.questions?.filter(v => v.id !== q.id) })}><Trash2 size={16}/></Button>}</div><Field label="Question"><Textarea value={q.prompt} maxLength={1500} onChange={e => qChange(q.id, { prompt: e.target.value })}/></Field><div className="options-editor"><span>Answer options · select the correct answer</span><RadioGroup value={String(q.correct)} onValueChange={v => qChange(q.id, { correct: Number(v) })} aria-label={`Correct answer for question ${i + 1}`}>{q.options.map((o, idx) => <div className="option-edit" key={idx}><RadioGroupItem id={`${q.id}-${idx}`} value={String(idx)}/><label className="sr-only" htmlFor={`${q.id}-${idx}`}>Option {idx + 1} is correct</label><Input aria-label={`Question ${i + 1}, option ${idx + 1}`} value={o} maxLength={1000} onChange={e => qChange(q.id, { options: q.options.map((v, n) => n === idx ? e.target.value : v) })}/>{q.options.length > 2 && <button aria-label={`Remove option ${idx + 1}`} onClick={() => qChange(q.id, { options: q.options.filter((_, n) => n !== idx), correct: q.correct === idx ? 0 : q.correct > idx ? q.correct - 1 : q.correct })}><Trash2 size={15}/></button>}</div>)}</RadioGroup>{q.options.length < 5 && <button className="text-button" onClick={() => qChange(q.id, { options: [...q.options, ''] })}>Add answer option</button>}</div><Field label="Answer explanation" help="Shown to the reviewer, never to a candidate during the test."><Textarea value={q.explanation} maxLength={2000} onChange={e => qChange(q.id, { explanation: e.target.value })}/></Field></div>)}
+ {active.questions && (active.questions.length < 8) && <Button variant="outline" onClick={() => change({ questions: [...active.questions!, { id: crypto.randomUUID(), prompt: '', options: ['', ''], correct: 0, explanation: '' }] })}><Plus size={17}/>Add a question from scratch</Button>}
+ {active.kind === 'typing' && <><Field label="Typing passage" help="Use 100–5,000 characters. Keep enough text for your fastest applicants."><Textarea rows={10} maxLength={5000} value={active.passage || ''} onChange={e => change({ passage: e.target.value })}/></Field><Field label="Reference typing target (WPM)" help="An editable pilot target, not a validated pass mark. Calibrate it against the actual role."><Input type="number" min={1} max={200} value={active.targetWpm || 45} onChange={e => change({ targetWpm: Number(e.target.value) })}/></Field></>}
+ {active.kind === 'writing' && <><Field label="Writing prompt"><Textarea rows={4} maxLength={4000} value={active.prompt || ''} onChange={e => change({ prompt: e.target.value })}/></Field><div className="info-panel compact"><MessageSquare size={22}/><div><strong>Writing is reviewed by a person</strong><p>Review the response against the four writing criteria.</p></div></div></>}
+ </div></TabsContent><TabsContent value="preview"><div className="module-preview"><span className="small-tag">Untimed preview</span><h2>{active.title}</h2><p>{active.instructions}</p>{active.context && <pre className="policy-card">{active.context}</pre>}{active.questions?.map((q, i) => <div className="preview-question" key={q.id}><h3>{i + 1}. {q.prompt || 'Your question will appear here'}</h3>{q.options.map((o, n) => <div className="preview-option" key={n}><span>{String.fromCharCode(65 + n)}</span>{o || 'Answer option'}</div>)}</div>)}{active.passage && <div className="typing-passage">{active.passage}</div>}{active.prompt && <><p><strong>{active.prompt}</strong></p><Textarea placeholder="Candidate writes their reply here" disabled rows={6}/></>}</div></TabsContent><TabsContent value="scoring"><div className="scoring-method"><h2>How this module is assessed</h2>{active.kind === 'typing' ? <><p>Corrected characters are calculated by edit distance against the matching prefix of the reference passage. Errors include substitutions, insertions and omissions in that prefix.</p><dl><dt>Gross WPM</dt><dd>Typed characters ÷ 5 ÷ sample minutes</dd><dt>Net WPM</dt><dd>(Typed characters − errors) ÷ 5 ÷ sample minutes</dd><dt>Accuracy</dt><dd>Corrected characters ÷ typed characters × 100</dd><dt>Module score</dt><dd>Net WPM ÷ {active.targetWpm || 45} target WPM × 100, capped at 100</dd></dl><p>The full {active.seconds}-second sample is required. Case, punctuation and spacing count. This raw score is not a vendor norm or percentile.</p></> : active.kind === 'writing' ? <><p>Four criteria, each rated 0–4 by a reviewer. The reply and notes remain visible beside the rating.</p>{rubric.map(r => <div className="rubric-description" key={r.id}><strong>{r.title}</strong><p>{r.help}</p><small>0: {r.anchors[0]} · 2: {r.anchors[1]} · 4: {r.anchors[2]}</small></div>)}<p>No automatic writing score or hiring decision is generated.</p></> : <><p>One point for each correct choice, zero for an incorrect or unanswered question. The module score is correct answers ÷ total questions × 100.</p><p>The reviewer sees the selected option, answer key and explanation for every question. Objective modules have equal weight in the objective average.</p></>}</div></TabsContent></Tabs></>}</section></div>
+ <Dialog open={adding} onOpenChange={setAdding}><DialogContent className="module-dialog"><DialogHeader><DialogTitle>Add a module</DialogTitle><DialogDescription>Pick a preconfigured element or start with a blank question.</DialogDescription></DialogHeader><h3>Saved modules</h3>{!library.length && <p>Your library is empty. Create a module in the Module library.</p>}<div className="add-module-grid">{library.map(record => <Button key={record.id} variant="outline" onClick={() => { const m = copyModule(record.module); update({ modules: [...a.modules, m] }); setSelected(m.id); setAdding(false); }}>{record.module.title} · {formatTime(record.module.seconds)}</Button>)}</div><h3>Starting scenarios</h3><div className="add-module-grid">{kinds.map(k => <div className="add-module-choice" key={k}><ModuleIcon kind={k}/><div><strong>{kindLabels[k]}</strong><small>{formatTime(template(k).seconds)} suggested</small></div><Button variant="outline" onClick={() => add(k)}>Use preset</Button>{k !== 'typing' && <button className="text-button" onClick={() => add(k, true)}>Write my own</button>}</div>)}</div></DialogContent></Dialog>
+ <AlertDialog open={!!remove} onOpenChange={v => { if (!v)
+        setRemove(''); }}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Remove this module?</AlertDialogTitle><AlertDialogDescription>This changes the unsaved test only.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Keep module</AlertDialogCancel><AlertDialogAction onClick={() => { const mods = a.modules.filter(m => m.id !== remove); update({ modules: mods }); if (selected === remove)
+        setSelected(mods[0]?.id || ''); setRemove(''); }}>Remove module</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog></>;
+}
+function ReviewPanel({ attempt: a, onSave, busy }: {
+    attempt: Attempt;
+    onSave: (r: Omit<Review, 'reviewedAt'>) => void;
+    busy: boolean;
+}) {
+    const [ratings, setRatings] = useState<Record<string, number>>(a.review?.ratings || {});
+    const [notes, setNotes] = useState(a.review?.notes || '');
+    const [outcome, setOutcome] = useState(a.review?.outcome || 'reviewed');
+    const written = a.modules.filter(m => m.kind === 'writing');
+    const exportResult = () => { const blob = new Blob([JSON.stringify(a, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `candidate-result-${a.id}.json`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
+    return <div className="review-body">{a.status !== 'completed' ? <div className="info-panel"><Clock /><div><h3>Assessment not submitted</h3><p>The attempt is {a.status === 'not-started' ? 'waiting to start' : 'in progress'}. Refresh the workspace after submission to review it.</p></div></div> : <><div className="review-score-row"><div className="objective-score"><small>OBJECTIVE SCORE</small><strong>{a.result?.objective ?? '—'}<span>/100</span></strong><p>Equal-weight automatic module average</p></div><div><span className="small-tag">Human review</span><strong>{a.review ? 'Saved' : 'Awaiting review'}</strong><p>{a.result?.writingWords || 0} written words</p></div></div>{a.result?.timedOut && <div className="mini-notice">The overall timer expired. Saved answers were submitted automatically.</div>}<Tabs defaultValue="writing"><TabsList variant="line" className="review-tabs"><TabsTrigger value="writing">Written response</TabsTrigger><TabsTrigger value="objective">Automatic evidence</TabsTrigger><TabsTrigger value="summary">Assessment details</TabsTrigger></TabsList><TabsContent value="writing">{written.length ? written.map(m => <section key={m.id} className="written-review"><h3>{m.title}</h3><details><summary>View customer message & policy</summary><pre className="policy-card">{m.context}</pre><p>{m.prompt}</p></details><div className="candidate-response">{a.answers[m.id]?.text || 'No written response was submitted.'}</div></section>) : <p>This test has no written-response module.</p>}<section className="rubric-review"><div className="section-heading"><h3>Writing rubric</h3><span>0–4 per criterion</span></div>{written.length > 0 && rubric.map(r => <div className="rating-row" key={r.id}><div><strong>{r.title}</strong><p>{r.help}</p><small>0: {r.anchors[0]} · 2: {r.anchors[1]} · 4: {r.anchors[2]}</small></div><RadioGroup className="rating-options" value={ratings[r.id] === undefined ? '' : String(ratings[r.id])} onValueChange={v => setRatings({ ...ratings, [r.id]: Number(v) })} aria-label={r.title}>{[0, 1, 2, 3, 4].map(n => <label className={`rating-choice ${ratings[r.id] === n ? 'chosen' : ''}`} key={n}><RadioGroupItem value={String(n)} id={`${a.id}-${r.id}-${n}`} className="sr-only"/>{n}</label>)}</RadioGroup></div>)}{written.length > 0 && <div className="rubric-total"><span>Human writing score</span><strong>{rubric.every(r => ratings[r.id] !== undefined) ? rubric.reduce((n, r) => n + ratings[r.id], 0) : '—'} / 16</strong></div>}<Field label="Review notes & evidence" help="Quote or describe something in the response that supports your ratings. Do not make a hiring decision from the numeric score alone."><Textarea rows={4} value={notes} maxLength={5000} onChange={e => setNotes(e.target.value)} placeholder="What did they get right? What would you explore in an interview?"/></Field><Field label="Review status"><ChoiceSelect value={outcome} onChange={v => setOutcome(v as Review['outcome'])} label="Review outcome" options={[{ value: 'reviewed', label: 'Reviewed' }, { value: 'follow-up', label: 'Needs a follow-up conversation' }]}/></Field><Button disabled={busy || notes.trim().length < 5 || (written.length > 0 && !rubric.every(r => ratings[r.id] !== undefined))} onClick={() => onSave({ ratings, notes, outcome })}><Check size={16}/>Save human review</Button>{a.review && <p className="method-note">Last reviewed {new Date(a.review.reviewedAt).toLocaleString('en-GB')}</p>}</section></TabsContent><TabsContent value="objective">{a.result?.modules.filter(m => m.kind !== 'writing').map(s => <section className="score-detail" key={s.id}><div className="section-heading"><div className="inline-icon"><ModuleIcon kind={s.kind}/><h3>{s.title}</h3></div><strong>{s.score}/100</strong></div>{s.kind === 'typing' ? <><div className="typing-metrics"><div><strong>{s.netWpm}</strong><span>Net WPM</span></div><div><strong>{s.grossWpm}</strong><span>Gross WPM</span></div><div><strong>{s.accuracy}%</strong><span>Accuracy</span></div></div><p>{s.errors} edit-distance errors · {s.seconds}-second sample · Target {a.modules.find(m => m.id === s.id)?.targetWpm} WPM</p><details><summary>Inspect typed text</summary><pre className="policy-card">{a.answers[s.id]?.text || 'No text entered'}</pre></details></> : s.details?.map((d, i) => <div className={`question-evidence ${d.correct ? 'correct' : 'incorrect'}`} key={i}><div><span>{d.correct ? <CheckCircle2 size={17}/> : <span>×</span>}</span><strong>{d.prompt}</strong></div><p><span>Selected</span>{d.selected || 'Unanswered'}</p><p><span>Answer key</span>{d.answer}</p><small>{d.explanation}</small></div>)}</section>)}<p className="method-note">Automatic scores are test evidence. They have not been validated as predictions of job performance.</p></TabsContent><TabsContent value="summary"><dl className="summary-list"><dt>Assessment</dt><dd>{a.title}</dd><dt>Test time budget</dt><dd>{formatTime(duration(a.modules))}</dd><dt>Submitted</dt><dd>{a.completedAt ? new Date(a.completedAt).toLocaleString('en-GB') : '—'}</dd><dt>Attempt reference</dt><dd>{a.id}</dd><dt>Content version</dt><dd>Frozen when this candidate link was created</dd><dt>Data</dt><dd>Candidate assessment</dd></dl><Button variant="outline" onClick={exportResult}><Download size={16}/>Export result JSON</Button></TabsContent></Tabs></>}</div>;
+}
