@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { authClient } from '@/lib/supabase/browser';
+import styles from './login.module.css';
 
 export default function Login({ configured }: { configured: boolean }) {
     const router = useRouter();
@@ -32,12 +33,12 @@ export default function Login({ configured }: { configured: boolean }) {
         finally { setBusy(false); }
     }
     if (!configured) return <p role="status">Admin sign-in is available once workspace setup is complete.</p>;
-    return <form onSubmit={signIn} className="auth-form">
+    return <form onSubmit={signIn} className={`auth-form ${styles.form}`}>
         <label className="field"><span>Email address</span><Input type="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} required maxLength={254}/></label>
         <label className="field"><span>Password</span><Input type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} required maxLength={256}/></label>
-        <p role="status" aria-live="polite">{message}</p>
+        <p className={styles.feedback} role="status" aria-live="polite">{message}</p>
         <Button disabled={busy} type="submit">{busy ? 'Please wait…' : 'Sign in'}</Button>
-        <Button disabled={busy} variant="outline" type="button" onClick={reset}>Reset password</Button>
-        <p>Candidates: use your assigned assessment link.</p>
+        <Button className={styles.recovery} disabled={busy} variant="link" type="button" onClick={reset}>Forgot password?</Button>
+        <p className={styles.candidateHelp}>Taking an assessment? Use your invitation link.</p>
     </form>;
 }

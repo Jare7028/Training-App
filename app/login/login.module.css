@@ -1,0 +1,60 @@
+.screen {
+    min-height: 100svh;
+    display: grid;
+    place-items: center;
+    padding: 32px 20px;
+}
+
+.panel {
+    width: 100%;
+    max-width: 420px;
+    padding: 32px;
+    background: var(--card, #fff);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px #123d4008;
+}
+
+.brand {
+    color: var(--muted-foreground);
+    font-size: .875rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+
+.panel h1 {
+    font-size: 1.75rem;
+    letter-spacing: -.04rem;
+}
+
+.form {
+    gap: 20px;
+    margin-top: 28px;
+}
+
+.feedback {
+    font-size: .875rem;
+    overflow-wrap: anywhere;
+}
+
+.feedback:empty {
+    display: none;
+}
+
+.recovery {
+    justify-self: center;
+    margin-top: -12px;
+}
+
+.candidateHelp {
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+    color: var(--muted-foreground);
+    font-size: .8125rem;
+    text-align: center;
+}
+
+@media (max-width: 480px) {
+    .screen { padding: 24px 16px; }
+    .panel { padding: 28px 24px; }
+}
