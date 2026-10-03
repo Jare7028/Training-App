@@ -91,3 +91,10 @@ npm run test:question-flow
 ```
 
 Run these sequentially with the other suites. For production-mode local QA, stop the local dev server, run `npm run build:local`, then `npm run start:local`. These commands explicitly use the isolated local QA configuration even when hosted variables are injected into the cloud environment. Standard `npm run build` remains the Vercel production build.
+
+
+## Requests
+
+Open **Requests** in the sidebar to create, edit and assign cards to active users in the selected business. Drag cards between columns or change the Column field in the request editor. Edit columns to rename, add or reorder them. Search and assignment filters, priorities and archiving are available. Viewers can read requests and images; Admins and Editors can change them.
+
+Paste a screenshot into an open request editor, or use Add images. Images and request details are saved in Supabase, with private, session-protected image access. Large images are resized before upload, and the server validates and normalises them. Local development now starts Supabase Storage too. Apply `20261003143000_requests_board.sql` after the business tenant migrations; it creates an empty board schema and a private bucket, with no sample requests. Run `npm run test:requests` for the loopback-only clipboard, persistence and isolation checks.

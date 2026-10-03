@@ -2,9 +2,10 @@
 import { cloneElement, isValidElement, useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import Accounts from './accounts';
+import Requests from './requests';
 import TenantSwitcher, { type Business } from './tenant-switcher';
 import { canEdit, roleLabels, type WorkspaceRole } from '@/lib/permissions';
-import { LayoutGrid, Users, Library, Plus, Clock, Check, Keyboard, SpellCheck, MessageSquare, Brain, ChevronUp, ChevronDown, Copy, ExternalLink, FileText, Search, RefreshCw, Trash2, CheckCircle2, Download, ShieldCheck } from 'lucide-react';
+import { LayoutGrid, Users, Library, Plus, Clock, Check, Keyboard, SpellCheck, MessageSquare, Brain, ChevronUp, ChevronDown, Copy, ExternalLink, FileText, Search, RefreshCw, Trash2, CheckCircle2, Download, ShieldCheck, Kanban } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -22,7 +23,7 @@ import { toast } from 'sonner';
 import { Assessment, Attempt, TestModule, ModuleKind, Question, Review, kindLabels, copyModule, SavedModule, formatTime, rubric, validateAssessment, reviewCriteria, workDuration, AssessmentConfig, Criterion, withTypingAdministration, typingSeconds, canFinishTypingEarly, sectionDuration } from '@/lib/assessment';
 const icons = { spelling: SpellCheck, grammar: FileText, typing: Keyboard, problem: Brain, writing: MessageSquare };
 const kinds = Object.keys(kindLabels) as ModuleKind[];
-const nav = [{ id: 'tests', title: 'Assessments', icon: LayoutGrid }, { id: 'candidates', title: 'Candidate review', icon: Users }, { id: 'library', title: 'Module library', icon: Library }, { id: 'accounts', title: 'Accounts & permissions', icon: ShieldCheck }];
+const nav = [{ id: 'tests', title: 'Assessments', icon: LayoutGrid }, { id: 'candidates', title: 'Candidate review', icon: Users }, { id: 'library', title: 'Module library', icon: Library }, { id: 'requests', title: 'Requests', icon: Kanban }, { id: 'accounts', title: 'Accounts & permissions', icon: ShieldCheck }];
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 const fmtDate = (n: number) => new Date(n).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 async function sendRequest(body: unknown, tenantId: string) { const r = await fetch('/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': tenantId }, body: JSON.stringify(body) }); const data = await r.json() as {
@@ -180,7 +181,8 @@ export default function Admin({ tenantId, tenantName, isGlobalAdmin, businesses 
  {error && <div className="error-panel" role="alert"><strong>Couldn’t load the workspace</strong><p>{error}</p><Button onClick={() => void load()} variant="outline"><RefreshCw size={16}/>Retry</Button></div>}
  {!loaded ? <div className="loading-grid"><Skeleton className="h-12 w-72"/><Skeleton className="h-64 w-full"/></div> : editing ? <Builder key={initial} presets={presets} library={library} moduleOnly={!!libraryEdit} assessment={editing} setAssessment={setEditing} onClose={leaveEdit} onSave={save} busy={busy}/> : <>
  {page === 'accounts' && role === 'admin' && <Accounts tenantId={tenantId}/>}
- {role === 'viewer' && <div className="mini-notice">Viewer access: you can read assessments, modules and candidate results.</div>}
+ {page === 'requests' && <Requests key={tenantId}/>}
+ {role === 'viewer' && page !== 'requests' && <div className="mini-notice">Viewer access: you can read assessments, modules and candidate results.</div>}
  {page === 'tests' && <><div className="page-heading"><div><h1>Assessments</h1></div>{editable && <Button className="primary-action" onClick={() => setCreate(true)}><Plus />Create assessment</Button>}</div>
  {!tests.length ? <section className="start-panel"><h2>No assessments yet</h2></section> : <div className="assessment-grid">{tests.map(t => <article className="assessment-card" key={t.id}>
     <div className="assessment-title"><h2>{t.title}</h2>{t.status === 'draft' && <Status value="draft"/>}</div>

@@ -45,3 +45,10 @@ Enable **Allow new users to sign up** and email confirmations in hosted Supabase
 Run `npm run test:tenants`, `npm run test:accounts`, API/workflow and Supabase suites locally. The tenant suite must never target a hosted project; it uses the local mail service and removes its exact test records. Verify production signup and global tenant switching after deployment without copying local fixture credentials or data.
 
 The live tenant migration was applied on 2026-10-03 and recorded as `20261003115033` (`business_tenants`). Verification found Resolvable (`resolvable`), the verified account’s global admin grant, and unchanged counts: one assessment, four modules, one attempt, no previews and one membership. All six content/attempt records belong to Resolvable. Do not replay the committed tenant migration on this hosted database. The app changes were merged in PR #5 and verified in production at `/signup`. Public registration and required email confirmation are enabled. Business mailbox delivery still requires custom SMTP configuration.
+
+
+## Requests board deployment
+
+Apply `supabase/migrations/20261003143000_requests_board.sql` after business tenants, then deploy the application. It adds tenant-protected board configuration, request cards and image metadata, plus the private `workspace-request-images` bucket. Existing assessment, candidate and membership records are unchanged. The migration was applied successfully to the connected hosted project through Supabase MCP on 2026-10-03. Do not replay it; inspect migration history first. No new application credentials are needed.
+
+Request metadata uses the signed-in caller and RLS. Storage operations use the existing server credential only after checking the request and selected business. Images are normalised to WebP and served through an authenticated route, with private/no-store caching. Never make the bucket public or publish signed image URLs. Local `db:start` includes Storage; `scripts/local-ready.mjs` verifies all eleven application tables and the private bucket.

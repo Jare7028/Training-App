@@ -125,3 +125,10 @@ Verified in an isolated worktree based on `abc7630`, using real local Supabase A
 Validation passed: typecheck, lint, production build, 9 tenant scenario groups, 28 account/permission checks, 71 API checks, 31 workflow checks, 18 Supabase security checks, and the existing desktop/mobile browser suite. The local database security advisor reported no issues. Tests use only loopback application, database and mail URLs and remove their exact tenant fixtures.
 
 The live migration preserved existing data, named the existing tenant Resolvable and granted the verified `jaredsbuddy@outlook.com` account global admin. Live application signup and mailbox delivery are pending deployment and Supabase Auth configuration (registration, required email confirmation and custom SMTP); local results do not verify those production settings.
+
+
+## Requests board
+
+The Requests suite passed 33 local checks against a fresh production build: configurable columns, active-user assignments, priorities, native clipboard image paste, ordinary text paste, multiple uploaded images, refresh persistence, desktop/390px/320px WCAG and reflow checks, mobile/keyboard column selection, drag movement and ordering. Failed card saves preserve the draft; retry after a committed upload with a lost response produces one card and one copy of each image.
+
+The suite verifies Editor sharing, Viewer controls and server permissions, suspended-session denial, invalid/foreign assignees, stale revisions, changed tenant selection, cross-origin protection, direct database RLS and private Storage denial, actual WebP decoding, oversized/SVG rejection, populated-column protection, discard confirmation, image deletion and archiving. It creates only labelled local fixtures and removes exact card, image and user IDs. Typecheck, lint and production build passed. Physical Safari and mobile image clipboard input are not verified by Chromium viewport emulation.

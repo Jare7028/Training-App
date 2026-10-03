@@ -7,8 +7,10 @@ if (!/^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(info.API_URL)) throw new Err
 const health = await fetch(`${info.API_URL}/auth/v1/health`);
 if (!health.ok) throw new Error('Local authentication API is unavailable.');
 const db = createClient(info.API_URL, info.SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
-for (const table of ['assessments', 'modules', 'attempts', 'preview_attempts', 'workspace_members', 'tenants', 'global_admins', 'tenant_admin_audit']) {
-    const { error } = await db.from(table).select(table === 'global_admins' ? 'user_id' : 'id').limit(1);
+for (const table of ['assessments', 'modules', 'attempts', 'preview_attempts', 'workspace_members', 'tenants', 'global_admins', 'tenant_admin_audit', 'request_boards', 'workspace_requests', 'request_images']) {
+    const { error } = await db.from(table).select(table === 'global_admins' ? 'user_id' : table === 'request_boards' ? 'tenant_id' : 'id').limit(1);
     if (error) throw new Error(`Local ${table} table is unavailable (${error.code}).`);
 }
-console.log('Local authentication and all eight PostgreSQL tables respond successfully.');
+const bucket = await db.storage.getBucket('workspace-request-images');
+if (bucket.error || bucket.data.public) throw new Error('Private request-image storage is unavailable.');
+console.log('Local authentication, all eleven PostgreSQL tables and private image storage respond successfully.');
