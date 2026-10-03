@@ -112,8 +112,12 @@ try {
     await anonymous.auth.signInWithPassword({ email: editorEmail, password });
     assert.equal((await anonymous.auth.updateUser({ data: { role: 'admin', workspace_owner: editorAccount.id } })).error, null);
     assert.equal((await (await editor.request.get('/api/admin')).json()).role, 'editor');
-    for (const client of [anonymous, createClient(values.NEXT_PUBLIC_SUPABASE_URL, values.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY)]) {
-        assert.ok((await client.from('workspace_members').select('*')).error);
+    const ownMembership = await anonymous.from('workspace_members').select('*');
+    assert.equal(ownMembership.error, null);
+    assert.deepEqual(ownMembership.data.map(row => row.id), [editorAccount.id]);
+    const unsignedClient = createClient(values.NEXT_PUBLIC_SUPABASE_URL, values.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
+    assert.ok((await unsignedClient.from('workspace_members').select('*')).error);
+    for (const client of [anonymous, unsignedClient]) {
         assert.ok((await client.from('workspace_members').update({ role: 'admin' }).eq('id', editorAccount.id)).error);
     }
     pass('User metadata and direct database requests cannot grant roles');

@@ -11,16 +11,18 @@ const anonymous = create(), authenticated = create();
 const { error: loginError } = await authenticated.auth.signInWithPassword({ email: 'recruiter@qa.invalid', password: 'Local-QA-Only-57!Password' });
 assert.equal(loginError, null);
 let checks = 1;
-for (const [role, client] of [['anonymous', anonymous], ['authenticated', authenticated]]) {
-    for (const table of ['assessments', 'modules', 'attempts', 'preview_attempts', 'workspace_members']) {
-        const { error, status } = await client.from(table).select('*');
-        assert.ok(error, `${role} must not read ${table}`);
-        assert.ok(status === 401 || status === 403);
-        checks++; console.log(`${role} direct access to ${table} denied`);
-    }
+for (const table of ['assessments', 'modules', 'attempts', 'preview_attempts', 'workspace_members']) {
+    const { error, status } = await anonymous.from(table).select('*');
+    assert.ok(error, `anonymous must not read ${table}`);
+    assert.ok(status === 401 || status === 403);
+    const own = await authenticated.from(table).select('*');
+    assert.equal(own.error, null);
+    const { data: { user } } = await authenticated.auth.getUser();
+    assert.ok(own.data.every(row => (row.owner || row.workspace_owner) === user.id));
+    checks += 2; console.log(`${table}: anonymous denied; authenticated rows restricted to own business`);
 }
-const { error: signupError } = await anonymous.auth.signUp({ email: `signup-${Date.now()}@qa.invalid`, password: 'Local-QA-Only-57!Password' });
-assert.ok(signupError); assert.equal(signupError.code, 'signup_disabled'); checks++;
+assert.ok((await anonymous.rpc('create_business', { business_name: 'QA', contact_name: 'QA' })).error); checks++;
+assert.ok((await authenticated.from('global_admins').insert({ user_id: (await authenticated.auth.getUser()).data.user.id })).error); checks++;
 async function appLogin() {
     const response = await fetch('http://127.0.0.1:5173/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Origin': 'http://127.0.0.1:5173' }, body: JSON.stringify({ email: 'recruiter@qa.invalid', password: 'Local-QA-Only-57!Password' }) });
     assert.equal(response.status, 200);

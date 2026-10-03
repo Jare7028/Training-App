@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { firstRow, updateRows, RecordRow } from '@/db/store';
+import { firstRow, updateRows, RecordRow } from '@/db/privileged-store';
 import { Answer, Assessment, scoreAttempt, workDuration, typingSeconds, canFinishTypingEarly } from '@/lib/assessment';
 
 import { questionAnswer, moveQuestion, navigationError, hasNextQuestion } from '@/lib/candidate-flow';

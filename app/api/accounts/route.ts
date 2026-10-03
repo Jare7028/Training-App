@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { bootstrapAdmin, getAssessmentAdmin } from '@/app/admin-auth';
-import { allRows, firstRow, insertRow, updateRows, type RecordRow } from '@/db/store';
+import { allRows, firstRow, insertRow, updateRows, type RecordRow } from '@/db/privileged-store';
 import { serviceClient } from '@/lib/supabase/admin';
 import { sameOrigin } from '@/lib/request-origin';
 import { roles, type WorkspaceAccount } from '@/lib/permissions';
@@ -19,9 +19,11 @@ function account(row: RecordRow, owner: string): WorkspaceAccount {
 function setupPath(token: string, type: string) {
     return `/auth/confirm?${new URLSearchParams({ token_hash: token, type })}`;
 }
-export async function GET() {
+export async function GET(request: Request) {
     try {
         const user = await getAssessmentAdmin();
+        const requestedTenant = request.headers.get('x-tenant-id');
+        if (user && requestedTenant && requestedTenant !== user.tenantId) return json({ error: 'The selected business changed. Reload before continuing.' }, 409);
         if (!user) return json({ error: 'Sign in to continue.' }, 401);
         if (user.role !== 'admin') return json({ error: 'Only Admins can manage accounts.' }, 403);
         const rows = await allRows('workspace_members', { workspace_owner: user.workspaceOwner }, { order: 'created_at' });
@@ -40,6 +42,8 @@ export async function GET() {
 export async function POST(request: Request) {
     try {
         const user = await getAssessmentAdmin();
+        const requestedTenant = request.headers.get('x-tenant-id');
+        if (user && requestedTenant && requestedTenant !== user.tenantId) return json({ error: 'The selected business changed. Reload before continuing.' }, 409);
         if (!user) return json({ error: 'Sign in to continue.' }, 401);
         if (user.role !== 'admin') return json({ error: 'Only Admins can manage accounts.' }, 403);
         if (!sameOrigin(request)) return json({ error: 'Invalid request origin.' }, 403);
@@ -63,7 +67,7 @@ export async function POST(request: Request) {
                 existing = data.users.find(item => item.email?.toLowerCase() === body.email);
                 if (existing || data.users.length < 1000) break;
             }
-            if (existing && await firstRow('workspace_members', { id: existing.id }))
+            if (existing && (await firstRow('workspace_members', { id: existing.id }) || existing.user_metadata?.business_name))
                 return json({ error: 'This account already belongs to a workspace. Manage its existing access instead.' }, 409);
             let newUser = false;
             let path: string | null = null;
