@@ -1,0 +1,26 @@
+name: Supabase database migration
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Verify or apply the candidate hiring metadata migration
+        required: true
+        default: verify
+        type: choice
+        options: [verify, apply]
+permissions:
+  contents: read
+concurrency:
+  group: training-app-supabase-schema
+  cancel-in-progress: false
+jobs:
+  candidate-hiring:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify or apply the checked-in migration
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          OPERATION: ${{ inputs.operation }}
+        run: python3 scripts/supabase-candidate-migration.py
