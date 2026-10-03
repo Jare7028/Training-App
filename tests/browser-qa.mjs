@@ -67,14 +67,14 @@ try {
         await page.getByRole('button', { name: 'Save & mark ready' }).click();
         await page.getByRole('heading', { name: 'Assessment builder', exact: true }).waitFor({ state: 'hidden' });
         await navigate(page, 'Assessments', device === 'mobile');
-        let card = page.locator('.assessment-card').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
+        let card = page.locator('.assessment-table tbody tr').filter({ has: page.getByText(title, {exact:true}) });
         const before = (await (await page.request.get(base + '/api/admin')).json()).attempts.length;
         await card.getByRole('button', { name: 'Preview test' }).click();
         await page.getByText('Test preview', { exact: true }).waitFor();
         assert.equal((await (await page.request.get(base + '/api/admin')).json()).attempts.length, before);
         record(`${device} Preview test creates no candidate record`);
         await page.goto(base + '/');await page.getByRole('heading', { name: 'Assessments', exact: true }).waitFor();
-        card = page.locator('.assessment-card').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
+        card = page.locator('.assessment-table tbody tr').filter({ has: page.getByText(title, {exact:true}) });
         await card.getByRole('button', { name: 'Create candidate link' }).click();
         await page.getByLabel('Candidate name or reference', { exact: true }).fill(alias);
         await page.getByRole('dialog').getByRole('button', { name: 'Create candidate link' }).click();

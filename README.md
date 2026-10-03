@@ -61,7 +61,7 @@ Workspace reads and writes use the signed-in Supabase session and database row-l
 
 See [DEPLOYMENT_HANDOFF.md](DEPLOYMENT_HANDOFF.md), [PRODUCTION_READINESS.md](PRODUCTION_READINESS.md) and [QA.md](QA.md). The production website is https://training-app-ashy-eight.vercel.app. The app account is jaredsbuddy@outlook.com; enter that email on /login and use Forgot password? to choose a password. The Supabase dashboard login is separate.
 
-The assessment list shows each title, duration, module count and the three actions. Candidate results live in Candidate review. Library cards show concise metadata; full instructions remain editable in the module editor. Writing criteria expand individually, with scoring guidance available during review.
+The assessment list uses a full-width table with one row per assessment, its duration and module count, and separate candidate-link, preview and edit actions. Rows wrap on smaller screens. Candidate results live in Candidate review. Library cards show concise metadata; full instructions remain editable in the module editor. Writing criteria expand individually, with scoring guidance available during review.
 
 ## Business signup and tenants
 

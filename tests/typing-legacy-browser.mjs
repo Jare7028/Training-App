@@ -31,7 +31,7 @@ try {
     await api(admin,{action:'save-module',module:measured});
     const blankTitle='BROWSER SYNTHETIC Blank measured assessment '+Date.now();
     const blank=await api(admin,{action:'save',assessment:{id:'',title:blankTitle,description:'Custom module check',status:'draft',modules:[],revision:0,updatedAt:0}});
-    await admin.reload();await admin.locator('.assessment-card').filter({has:admin.getByRole('heading',{name:blankTitle,exact:true})}).getByRole('button',{name:'Edit assessment',exact:true}).click();
+    await admin.reload();await admin.locator('.assessment-table tbody tr').filter({has: admin.getByText(blankTitle, {exact:true})}).getByRole('button',{name:'Edit assessment',exact:true}).click();
     await admin.getByRole('button',{name:'Add module',exact:true}).click();await admin.getByRole('dialog',{name:'Add a module',exact:true}).getByRole('button',{name:measured.title+' · 1:00',exact:true}).click();
     assert.equal(await admin.getByLabel('Work timer (seconds)',{exact:true}).inputValue(),'90');assert.equal(await admin.getByLabel('Candidate timing',{exact:true}).innerText(),'Shared work timer');
     await admin.getByRole('button',{name:'Save & mark ready',exact:true}).click();await admin.getByRole('heading',{name:'Assessment builder',exact:true}).waitFor({state:'hidden'});

@@ -22,7 +22,7 @@ for(const [device,viewport] of [['mobile',{width:390,height:844}],['desktop',{wi
  const assessment=structuredClone(content);assessment.title=title;assessment.config.code='QA-CORE-CHECK';
  const created=await api(admin,{action:'save',assessment});
  await admin.reload();await admin.getByRole('heading',{name:title,exact:true}).waitFor();
- const card=admin.locator('.assessment-card').filter({has:admin.getByRole('heading',{name:title,exact:true})});
+ const card=admin.locator('.assessment-table tbody tr').filter({has: admin.getByText(title, {exact:true})});
  await card.getByRole('button',{name:'Edit assessment'}).click();assert.equal(await admin.getByLabel('Work timer (seconds)',{exact:true}).inputValue(),'530');
  await admin.getByRole('button',{name:/Write a service recovery reply/}).first().click();await admin.locator('.criterion-editor').filter({has:admin.getByLabel('Criterion 5 title',{exact:true})}).locator('summary').click();await admin.getByLabel('Criterion 5 title',{exact:true}).waitFor();
  await admin.getByLabel('Criterion 5 title',{exact:true}).fill('Written language');await audit(admin,device+' editable assessment and five-criterion rubric');
