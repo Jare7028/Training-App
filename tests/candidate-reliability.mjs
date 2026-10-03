@@ -157,6 +157,7 @@ try {
         state = await command(token, state, 'start');
         state = await command(token, state, 'navigate', {}, 3);
         state = await command(token, state, 'save', { text: 'Initial customer reply.' });
+        let navigationRequests = 0;
         const intercepted = barrier(), release = barrier();
         const page = await guest.newPage();
         page.on('pageerror', e => errors.push(e.message));
@@ -164,6 +165,7 @@ try {
         try {
             await page.route('**/api/candidate', async route => {
                 if (route.request().postDataJSON()?.action === 'navigate') {
+                    navigationRequests++;
                     const response = await route.fetch();
                     intercepted.resolve(); await release.promise;
                     await route.fulfill({ response });
@@ -174,6 +176,17 @@ try {
             await reply.focus();
             await page.getByRole('button', { name: '1. Edit customer updates', exact: true }).click();
             await waitForSignal(intercepted.promise);
+            assert.equal(await reply.evaluate(e => e.readOnly), true);
+            await reply.focus();
+            await page.keyboard.press('Control+a');
+            assert.equal(await reply.evaluate(e => e.selectionEnd - e.selectionStart), (await reply.inputValue()).length);
+            await page.keyboard.press('Tab');
+            assert.equal(await reply.evaluate(e => document.activeElement === e), false, 'Readonly reply must not trap keyboard focus');
+            await page.getByRole('button', { name: '1. Edit customer updates', exact: true }).evaluate(e => { e.click(); e.click(); });
+            assert.equal(navigationRequests, 1, 'Repeated activation must not duplicate navigation');
+            const audit = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+            assert.deepEqual(audit.violations.map(v => v.id), []);
+            await page.screenshot({ path: 'test-results/reliability/pr3-readonly-mobile.png', fullPage: true });
             await reply.focus();
             await page.keyboard.press('End');
             await page.keyboard.type(' Extra detail.');
@@ -198,12 +211,14 @@ try {
         state = await command(token, state, 'start');
         const question = state.modules[0].questions[0];
         state = await command(token, state, 'save', { choices: { [question.id]: 0 } });
+        let navigationRequests = 0;
         const intercepted = barrier(), release = barrier();
         const page = await guest.newPage();
         page.on('pageerror', e => errors.push(e.message));
         try {
             await page.route('**/api/candidate', async route => {
                 if (route.request().postDataJSON()?.action === 'navigate') {
+                    navigationRequests++;
                     intercepted.resolve(); await release.promise;
                     await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'Temporary navigation failure.' }) });
                 } else await route.continue();
@@ -213,9 +228,24 @@ try {
             await waitForSignal(intercepted.promise);
             const alternative = page.getByRole('radiogroup').first().getByRole('radio').nth(1);
             assert.equal(await alternative.isDisabled(), true);
+            await page.getByRole('button', { name: 'Save & continue', exact: true }).evaluate(e => { e.click(); e.click(); });
+            await page.keyboard.press('Enter');
+            await page.keyboard.press('Space');
+            assert.equal(navigationRequests, 1);
+            for (let i = 0; i < 5; i++) {
+                await page.keyboard.press('Tab');
+                assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('role') === 'radio'), false, 'Disabled radio must be skipped by Tab');
+            }
             release.resolve();
             await page.getByRole('alert').filter({ hasText: 'Temporary navigation failure.' }).waitFor();
-            await alternative.check();
+            const audit = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+            assert.deepEqual(audit.violations.map(v => v.id), []);
+            await page.getByRole('radiogroup').first().getByRole('radio').first().focus();
+            await page.keyboard.press('ArrowDown');
+            await page.waitForFunction(() => document.activeElement === document.querySelector('[role=radiogroup]')?.querySelectorAll('[role=radio]')[1]);
+            await page.keyboard.press('Space');
+            await page.waitForFunction(() => document.querySelector('[role=radiogroup]')?.querySelectorAll('[role=radio]')[1]?.getAttribute('aria-checked') === 'true');
+            assert.equal(await alternative.isChecked(), true, 'Keyboard editing must recover after failure');
             await page.getByRole('button', { name: 'Retry saving', exact: true }).click();
             await page.waitForFunction(() => !document.querySelector('.save-error'));
             const persisted = await request(guest, '/api/candidate?token=' + token);
