@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {pathToFileURL} from 'node:url';
+import ts from 'typescript';
+const code=ts.transpileModule(readFileSync('lib/candidate-tools.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText.replace("from './assessment'",`from '${pathToFileURL(process.cwd()+'/lib/assessment.ts')}'`).replace("from './analytics-export'",`from '${pathToFileURL(process.cwd()+'/lib/analytics-export.ts')}'`);
+const {candidateMetrics,assignedContent,candidateCsv,copyTitle}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+const objectiveModule={id:'questions',kind:'questions',title:'Policy',seconds:90,instructions:'Use these facts',questions:[{id:'q',prompt:'PRIVATE QUESTION',options:['A','B'],correct:1,explanation:'PRIVATE ANSWER KEY'}]};
+const writing={id:'writing',kind:'writing',title:'Reply',seconds:90,instructions:'',prompt:'PRIVATE PROMPT',rubric:[{id:'r',title:'Accuracy',help:'',max:2,anchors:['No','Some','Yes']}]};
+const a={id:'a',assessmentId:'assessment',alias:'=FORMULA()',title:'Assessment',status:'completed',createdAt:100000,completedAt:150000,modules:[objectiveModule,writing],answers:{writing:{text:'PRIVATE RESPONSE'}},review:{outcome:'reviewed',ratings:{'writing:r':2},notes:'PRIVATE REVIEW NOTES'},hiring:{stage:'Interview',notes:'PRIVATE HIRING NOTES',revision:1},result:{modules:[{id:'questions',kind:'questions',title:'Policy',correct:1,total:2,score:50},{id:'type',kind:'typing',title:'Typing',score:100,netWpm:200,accuracy:90,administration:'Incomplete — technical review'}]}};
+assert.deepEqual(candidateMetrics(a),{correct:1,total:2,accuracy:50,writing:2,writingMax:2});
+assert.equal(candidateMetrics({...a,review:{...a.review,outcome:'not-scorable'}}).writing,null);
+assert.equal(candidateMetrics({...a,review:{...a.review,ratings:{}}}).writing,null);
+const copy=structuredClone(a);copy.id='b';copy.modules[0].id='copy';copy.modules[0].questions[0].id='copy-q';copy.modules[1].rubric[0].id='copy-r';assert.equal(assignedContent(copy),assignedContent(a));copy.modules[0].seconds=60;assert.notEqual(assignedContent(copy),assignedContent(a));copy.modules[0].seconds=90;copy.modules[0].questions[0].correct=0;assert.notEqual(assignedContent(copy),assignedContent(a));
+const csv=candidateCsv([a]);assert.ok(csv.includes('"\'=FORMULA()"'));assert.ok(csv.includes('Incomplete — technical review'));assert.ok(csv.includes('"1","2","50"'));for(const value of ['PRIVATE QUESTION','PRIVATE ANSWER KEY','PRIVATE PROMPT','PRIVATE RESPONSE','PRIVATE REVIEW NOTES','PRIVATE HIRING NOTES'])assert.ok(!csv.includes(value));assert.ok(copyTitle('x'.repeat(120)).length<=120);
+console.log('PASS: Objective totals exclude typing; human scales and unscorable reviews remain separate.');console.log('PASS: Comparison recognises copied content and distinguishes timing and answer-key changes.');console.log('PASS: CSV escapes formulas, preserves administration flags and excludes private content.');console.log('PASS: Duplicate titles fit the existing editable title limit.');

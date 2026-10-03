@@ -32,6 +32,7 @@ npm run test:api
 npm run test:workflow
 npm run test:browser
 npm run test:modules
+npm run test:candidate-tools
 npm run test:supabase
 npm run test:accounts
 npm run test:tenants
@@ -111,3 +112,13 @@ Assessment reports filter the cohort by candidate-link creation date (UTC) and a
 Requests reports filter by request creation date and use the business's current custom columns, assignees, priorities and archive state. No column name implies completion. Counts include inactive assignees still holding cards. All reports offer custom dates, refresh, readable chart data and CSV export with spreadsheet-formula protection. Definitions are available in a collapsed section.
 
 `GET /api/analytics` uses the signed-in Supabase session and existing business RLS, checks stale tenant headers and returns private/no-store aggregates. It exposes no candidate aliases, answers, scoring keys, bearer tokens, image paths or reviewer notes. Admin, Editor and Viewer can read it; suspension revokes access. Run `npm run test:analytics` for metric and loopback-only API/browser checks; synthetic records are tracked and removed by exact IDs.
+
+## Candidate management
+
+Candidate review supports assessment, review-status and hiring-stage filters. Select 2–4 candidates to compare objective points, typing measurements and human rubric ratings. Different assigned content or settings are flagged. **Export CSV** exports the current filtered results; it excludes answers, keys, notes and candidate links and escapes spreadsheet formulas. Candidate reads use complete keyset pagination, including older records beyond the former 200-candidate screen limit.
+
+Open a candidate to save **Hiring decision**: a stage and private follow-up notes. Choose a suggested stage or a custom name. Admins and Editors can save; Viewers can read, compare and export. Hiring metadata has its own revision so assessor updates do not interrupt candidate progress or alter submitted results. Stale notes are rejected with a conflict.
+
+Assessment and module **More actions → Duplicate** opens an independent editable copy; assessment copies start as drafts. Module library supports search and type filters. Originals and existing candidate snapshots remain unchanged.
+
+Apply `20261003201000_candidate_hiring.sql` once after the existing tenant and restricted-column migrations. It adds assessor metadata and its restricted update grant to attempts; it does not rewrite assessment snapshots, answers or clocks. Supabase management access is available through the GitHub Actions repository secret; the dedicated database workflow verifies or applies only this checked-in migration, records its version transactionally, and prints no credentials or applicant data. See [COMPETITOR_REVIEW.md](COMPETITOR_REVIEW.md) for the public first-party research and remaining gaps.

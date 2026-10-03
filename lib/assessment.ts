@@ -114,9 +114,11 @@ export type Review = {
     reviewer?: string;
     history?: Omit<Review, 'history'>[];
 };
+export type HiringDecision = { stage: string; notes: string; revision: number; updatedAt?: number; updatedBy?: string };
 export type Attempt = {
     id: string;
     assessmentId: string;
+    hiring?: HiringDecision;
     title: string;
     alias: string;
     status: string;

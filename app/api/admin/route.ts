@@ -10,7 +10,7 @@ import { updateRows as completeExpiredAttempt } from '@/db/privileged-store';
 export const dynamic = 'force-dynamic';
 const json = (data: unknown, status = 200) => NextResponse.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
 function assessment(r: RecordRow): Assessment { return withTypingAdministration({ id: String(r.id), title: String(r.title), description: String(r.description), status: r.status as Assessment['status'], modules: JSON.parse(String(r.modules)), updatedAt: Number(r.updated_at), revision: Number(r.revision), config: r.config ? JSON.parse(String(r.config)) : undefined }); }
-function attempt(r: RecordRow) { const snapshot = JSON.parse(String(r.snapshot)); return { id: r.id, assessmentId: r.assessment_id, title: snapshot.title, alias: r.alias, status: r.status, createdAt: r.created_at, startedAt: r.started_at, deadline: r.deadline, completedAt: r.result ? JSON.parse(String(r.result)).completedAt : null, modules: snapshot.modules, config: snapshot.config, answers: JSON.parse(String(r.answers)), result: r.result ? JSON.parse(String(r.result)) : null, review: r.review ? JSON.parse(String(r.review)) : null, expiresAt: r.expires_at, revoked: !!r.revoked, revision: r.revision }; }
+function attempt(r: RecordRow) { const snapshot = JSON.parse(String(r.snapshot)); return { id: r.id, assessmentId: r.assessment_id, title: snapshot.title, alias: r.alias, status: r.status, createdAt: r.created_at, startedAt: r.started_at, deadline: r.deadline, completedAt: r.result ? JSON.parse(String(r.result)).completedAt : null, modules: snapshot.modules, config: snapshot.config, answers: JSON.parse(String(r.answers)), result: r.result ? JSON.parse(String(r.result)) : null, review: r.review ? JSON.parse(String(r.review)) : null, hiring: r.hiring ? JSON.parse(String(r.hiring)) : {stage:'Unassigned',notes:'',revision:0}, expiresAt: r.expires_at, revoked: !!r.revoked, revision: r.revision }; }
 export async function GET(request: Request) {
     try {
         const user = await getAssessmentAdmin();
@@ -18,7 +18,7 @@ export async function GET(request: Request) {
         if (user && requestedTenant && requestedTenant !== user.tenantId) return json({ error: 'The selected business changed. Reload before continuing.' }, 409);
         if (!user)
             return json({ error: 'Sign in to open your assessment workspace.' }, 401);
-        const [tests, rows, library] = await Promise.all([allRows('assessments', { owner: user.workspaceOwner }, { order: 'updated_at' }), allRows('attempts', { owner: user.workspaceOwner, demo: 0 }, { order: 'created_at', limit: 200 }), allRows('modules', { owner: user.workspaceOwner }, { order: 'updated_at' })]);
+        const [tests, rows, library] = await Promise.all([allRows('assessments', { owner: user.workspaceOwner }, { order: 'updated_at' }), allRows('attempts', { owner: user.workspaceOwner, demo: 0 }, { order: 'created_at', complete: true }), allRows('modules', { owner: user.workspaceOwner }, { order: 'updated_at' })]);
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
             if (row.status === 'in-progress' && Number(row.deadline) + 2500 <= Date.now()) {
@@ -74,6 +74,7 @@ export async function POST(request: Request) {
             revision: number;
             review: Review;
             extraSeconds?: number;
+            hiring?: {stage:string;notes:string;revision:number};
         };
         const owner = user.workspaceOwner;
         const now = Date.now();
@@ -93,6 +94,16 @@ export async function POST(request: Request) {
             const id = crypto.randomUUID();
             await insertRow('modules', { id, owner, content, updated_at: now, revision: 1 });
             return json({ id });
+        }
+        if (body.action === 'hiring') {
+            const decision = body.hiring;
+            if (!decision || typeof decision.stage !== 'string' || !decision.stage.trim() || decision.stage.length > 50 || typeof decision.notes !== 'string' || decision.notes.length > 5000 || !Number.isInteger(decision.revision) || decision.revision < 0 || decision.revision >= 999999999) return json({error:'Choose a hiring stage (up to 50 characters) and notes under 5,000 characters.'},400);
+            const row = await firstRow('attempts', {id:String(body.id),owner});
+            if (!row) return json({error:'Candidate not found.'},404);
+            const hiring = {stage:decision.stage.trim(),notes:decision.notes.trim(),revision:decision.revision+1,updatedAt:now,updatedBy:user.email};
+            const count = await updateRows('attempts',{hiring:JSON.stringify(hiring)},{id:row.id,owner,'hiring->>revision':String(decision.revision)});
+            if (!count) return json({error:'The hiring notes changed in another tab. Refresh before saving.'},409);
+            return json({hiring});
         }
         if (body.action === 'revoke') {
             const update = await updateRows('attempts', { revoked: 1, revision: body.revision + 1 }, { id: String(body.id), owner, revision: body.revision });

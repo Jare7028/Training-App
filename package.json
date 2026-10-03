@@ -32,7 +32,8 @@
     "test:reliability": "node tests/candidate-reliability.mjs && node tests/legacy-reliability.mjs",
     "test:settings": "node tests/settings-browser.mjs",
     "test:question-flow": "node tests/question-flow.mjs",
-    "test:modules": "node tests/module-creation.mjs"
+    "test:modules": "node tests/module-creation.mjs",
+    "test:candidate-tools": "node tests/candidate-tools-metrics.mjs && node tests/candidate-tools.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
