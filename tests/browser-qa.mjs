@@ -9,6 +9,13 @@ const results = [];
 const record = (test, evidence = {}) => { results.push({ test, status: 'PASS', ...evidence }); writeFileSync('tests/browser-results.json', JSON.stringify(results, null, 2)); console.log(test); };
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : { executablePath: '/usr/bin/chromium' });
 async function audit(page, name) {
+    // Audit the settled UI rather than intermediate colours in button/dialog
+    // transitions. Exclude looping indicators from this bounded wait.
+    await page.evaluate(async () => {
+        await Promise.all(document.getAnimations()
+            .filter(animation => Number.isFinite(animation.effect?.getComputedTiming().endTime))
+            .map(animation => animation.finished.catch(() => {})));
+    });
     const report = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
     assert.deepEqual(report.violations.map(v => ({ id: v.id, impact: v.impact, nodes: v.nodes.map(n => ({ target: n.target, summary: n.failureSummary })) })), [], name);
     record(name, { rulesPassed: report.passes.length });

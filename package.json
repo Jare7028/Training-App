@@ -20,6 +20,7 @@
     "test:workflow": "python3 tests/workflow-qa.py",
     "test:browser": "node tests/browser-qa.mjs",
     "test:supabase": "node tests/supabase-qa.mjs",
+    "test:accounts": "node tests/accounts-qa.mjs",
     "dev:local": "node scripts/local-dev.mjs"
   },
   "dependencies": {

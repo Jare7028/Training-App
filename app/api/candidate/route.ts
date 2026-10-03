@@ -1,4 +1,5 @@
 import { getAssessmentAdmin } from '@/app/admin-auth';
+import { canEdit } from '@/lib/permissions';
 import { NextResponse } from 'next/server';
 import { sameOrigin } from '@/lib/request-origin';
 import { firstRow, updateRows, hashToken, RecordRow } from '@/db/store';
@@ -15,7 +16,7 @@ async function find(token: string) {
         const preview = await firstRow('preview_attempts', { token_hash: hash });
         if (!preview) return null;
         const admin = await getAssessmentAdmin();
-        if (!admin || admin.userId !== preview.owner) return null;
+        if (!admin || !canEdit(admin.role) || admin.workspaceOwner !== preview.owner) return null;
         row = { ...preview, preview: true };
     }
     if (row.revoked || Number(row.expires_at) <= Date.now()) return null;

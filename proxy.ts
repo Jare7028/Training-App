@@ -20,4 +20,4 @@ export async function proxy(request: NextRequest) {
     response.headers.set('Cache-Control', 'private, no-store');
     return response;
 }
-export const config = { matcher: ['/', '/login', '/account/:path*', '/auth/:path*', '/api/admin'] };
+export const config = { matcher: ['/', '/login', '/account/:path*', '/auth/:path*', '/api/admin', '/api/accounts'] };

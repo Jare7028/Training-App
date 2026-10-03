@@ -5,6 +5,7 @@ import { sameOrigin } from '@/lib/request-origin';
 import { getAssessmentAdmin } from '@/app/admin-auth';
 import { allRows, firstRow, insertRow, updateRows, deleteExpiredPreviews, hashToken, RecordRow } from '@/db/store';
 import { Assessment, validateAssessment, scoreAttempt, rubric, Review, TestModule, cleanModule } from '@/lib/assessment';
+import { canEdit } from '@/lib/permissions';
 export const dynamic = 'force-dynamic';
 const json = (data: unknown, status = 200) => NextResponse.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
 function assessment(r: RecordRow): Assessment { return { id: String(r.id), title: String(r.title), description: String(r.description), status: r.status as Assessment['status'], modules: JSON.parse(String(r.modules)), updatedAt: Number(r.updated_at), revision: Number(r.revision) }; }
@@ -14,23 +15,23 @@ export async function GET() {
         const user = await getAssessmentAdmin();
         if (!user)
             return json({ error: 'Sign in to open your assessment workspace.' }, 401);
-        const [tests, rows, library] = await Promise.all([allRows('assessments', { owner: user.userId }, { order: 'updated_at' }), allRows('attempts', { owner: user.userId, demo: 0 }, { order: 'created_at', limit: 200 }), allRows('modules', { owner: user.userId }, { order: 'updated_at' })]);
+        const [tests, rows, library] = await Promise.all([allRows('assessments', { owner: user.workspaceOwner }, { order: 'updated_at' }), allRows('attempts', { owner: user.workspaceOwner, demo: 0 }, { order: 'created_at', limit: 200 }), allRows('modules', { owner: user.workspaceOwner }, { order: 'updated_at' })]);
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
             if (row.status === 'in-progress' && Number(row.deadline) + 2500 <= Date.now()) {
                 const snapshot = JSON.parse(String(row.snapshot));
                 const result = scoreAttempt(snapshot.modules, JSON.parse(String(row.answers)), Number(row.deadline), true);
-                const update = await updateRows('attempts', { status: 'completed', result: JSON.stringify(result), revision: Number(row.revision) + 1 }, { id: row.id, owner: user.userId, revision: row.revision, status: 'in-progress' });
+                const update = await updateRows('attempts', { status: 'completed', result: JSON.stringify(result), revision: Number(row.revision) + 1 }, { id: row.id, owner: user.workspaceOwner, revision: row.revision, status: 'in-progress' });
                 if (update) {
                     row.status = 'completed';
                     row.result = JSON.stringify(result);
                     row.revision = Number(row.revision) + 1;
                 }
                 else
-                    rows[i] = (await firstRow('attempts', { id: row.id, owner: user.userId })) || row;
+                    rows[i] = (await firstRow('attempts', { id: row.id, owner: user.workspaceOwner })) || row;
             }
         }
-        return json({ presets: Object.keys(kindLabels).map(k => template(k as ModuleKind)), assessments: tests.map(assessment), attempts: rows.map(attempt), library: library.map(r => ({ id: r.id, module: JSON.parse(String(r.content)), revision: r.revision, updatedAt: r.updated_at })), user: user.displayName });
+        return json({ presets: Object.keys(kindLabels).map(k => template(k as ModuleKind)), assessments: tests.map(assessment), attempts: rows.map(attempt), library: library.map(r => ({ id: r.id, module: JSON.parse(String(r.content)), revision: r.revision, updatedAt: r.updated_at })), user: user.displayName, role: user.role, userId: user.userId });
     }
     catch (e) {
         console.error('Admin load', e);
@@ -42,6 +43,8 @@ export async function POST(request: Request) {
         const user = await getAssessmentAdmin();
         if (!user)
             return json({ error: 'Sign in to continue.' }, 401);
+        if (!canEdit(user.role))
+            return json({ error: 'Your Viewer role has read-only access.' }, 403);
         if (!sameOrigin(request))
             return json({ error: 'Invalid request origin.' }, 403);
         if (Number(request.headers.get('content-length') || 0) > 150000)
@@ -67,7 +70,7 @@ export async function POST(request: Request) {
             revision: number;
             review: Review;
         };
-        const owner = user.userId;
+        const owner = user.workspaceOwner;
         const now = Date.now();
         if (body.action === 'save-module') {
             const contentModule = body.module;
