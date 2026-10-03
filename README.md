@@ -65,11 +65,11 @@ The assessment list shows each title, duration, module count and the three actio
 
 ## Business signup and tenants
 
-`/signup` collects a business name, contact name, email and password (at least 12 characters). Supabase sends a verification email. After confirmation, the database creates a new business and its first Admin together. Retries reuse the same tenant; matching names or email domains never join another business. New businesses start empty. Verified users who still need to finish setup can use `/onboarding`.
+`/signup` collects a business name, contact name, email and password (at least 12 characters). Hosted signup confirms the account automatically and signs the user in immediately, without sending a verification email. The database creates a new business and its first Admin together. Retries reuse the same tenant; matching names or email domains never join another business. New businesses start empty. Signed-in users who still need to finish setup can use `/onboarding`.
 
 The business migration preserves existing owner fields, assessments, modules, results and candidate links while adding permanent tenant IDs and matching foreign keys. The existing `jaredsbuddy@outlook.com` workspace becomes **Resolvable** (`resolvable`). The verified account receives a separately stored global admin role. Global admins use the business selector to open one tenant at a time; switching is logged and old-tab mutations are rejected. Business Admins cannot grant global admin access.
 
-Hosted signup requires Supabase Auth **Allow new users to sign up**, email confirmations and custom SMTP. Local configuration enables signup and confirmation and uses local Mailpit. These local settings do not update a hosted project's Auth configuration. The tenant QA suite verifies actual confirmation links, API and database isolation, role escalation attempts, stale-tab protection and global switching using local fixtures only.
+Hosted signup enables Supabase Auth **Allow new users to sign up** and disables required email confirmation, as requested by the user. SMTP and a custom domain are not prerequisites for account creation or login. Password-reset email delivery remains a separate, paused setup. Local configuration still uses confirmation and local Mailpit so the existing tenant QA suite can verify that flow as well as API and database isolation, role escalation attempts, stale-tab protection and global switching. Local settings do not update hosted Auth configuration.
 
 ## Customer-service core assessment
 
