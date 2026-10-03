@@ -30,7 +30,11 @@ export default function FlexibleCandidate({ token, initial }: { token: string; i
     const typingInput = useRef<HTMLTextAreaElement>(null);
     useEffect(() => { clock.current.local = performance.now(); const interval = setInterval(() => setNow(clock.current.server + performance.now() - clock.current.local), 250); return () => clearInterval(interval); }, []);
     const accept = useCallback((next: FlexibleSession, replace: boolean) => {
-        state.current = next; setSession(next); clock.current = { server: next.serverNow, local: performance.now() };
+        state.current = next; setSession(next);
+        const local = performance.now();
+        // Delayed acknowledgements must not rewind the already-running countdown.
+        const estimatedNow = clock.current.server + local - clock.current.local;
+        clock.current = { server: Math.max(next.serverNow, estimatedNow), local };
         if (replace) { input.current = next.answer || {}; setAnswer(input.current); dirty.current = false; }
         if (next.status === 'completed') { setConfirm(false); setReview(false); }
     }, []);
@@ -54,7 +58,6 @@ export default function FlexibleCandidate({ token, initial }: { token: string; i
                 dirty.current = editedWhileSaving;
             }
             setError(''); setSaved(dirty.current ? 'Unsaved changes' : 'Saved');
-            if (action === 'typing-start') requestAnimationFrame(() => typingInput.current?.focus());
             return true;
         } catch (e) { setError((e as Error).message); setSaved('Not saved'); return false; }
         finally { flight.current = false; setBusy(false); }
@@ -62,6 +65,10 @@ export default function FlexibleCandidate({ token, initial }: { token: string; i
     useEffect(() => { const interval = setInterval(() => { if (dirty.current && state.current.status === 'in-progress') void send('save'); }, 1500); return () => clearInterval(interval); }, [send]);
     const section = session.modules?.[session.currentIndex];
     const typing = answer.typing;
+    const typingStartedAt = typing?.startedAt, typingComplete = typing?.complete;
+    useEffect(() => {
+        if (typingStartedAt && !typingComplete) typingInput.current?.focus();
+    }, [typingStartedAt, typingComplete]);
     const typingWindow = section ? typingSeconds(section) : 60;
     const totalLeft = Math.max(0, Math.ceil(((session.deadline || now) - now) / 1000));
     const typingLeft = Math.max(0, Math.ceil(((typing?.deadline || now) - now) / 1000));

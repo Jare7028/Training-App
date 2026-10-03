@@ -98,7 +98,9 @@ try {
             assert.equal(resumed.deadline, state.deadline);
         } finally { await page.close(); }
     });
-    await run('typing reload preserves keystrokes entered while interruption confirmation is delayed', async () => {
+    for (const editDuringWait of [true, false]) await run(editDuringWait
+        ? 'typing reload preserves keystrokes entered while interruption confirmation is delayed'
+        : 'delayed interruption acknowledgement cannot add time to either displayed countdown', async () => {
         const { token, url } = await assignment();
         let state = await request(guest, '/api/candidate?token=' + token);
         state = await command(token, state, 'start');
@@ -119,14 +121,28 @@ try {
             });
             await page.goto(url); await waitForSignal(intercepted.promise);
             const input = page.getByLabel('Your typed copy', { exact: true });
-            await input.press('End'); await input.pressSequentially('2048 is open.', { delay: 10 });
-            const edited = await input.inputValue(); assert.equal(edited, 'Case 2048 is open.');
-            const saved = page.waitForResponse(r => r.url().endsWith('/api/candidate') && r.request().postDataJSON()?.action === 'save' && r.ok());
+            const clockValue = label => page.getByRole('timer', { name: label, exact: true }).evaluate(e => e.textContent.split(':').reduce((seconds, part) => seconds * 60 + Number(part), 0));
+            if (editDuringWait) {
+                await input.press('End'); await input.pressSequentially('2048 is open.', { delay: 10 });
+            } else {
+                const initialSeconds = await clockValue('Typing time remaining');
+                // Keep the real server response pending while three seconds of countdown elapse.
+                await page.waitForFunction(limit => document.querySelector('[aria-label="Typing time remaining"]').textContent.split(':').reduce((seconds, part) => seconds * 60 + Number(part), 0) <= limit, initialSeconds - 3);
+            }
+            const edited = await input.inputValue(); assert.equal(edited, editDuringWait ? 'Case 2048 is open.' : 'Case ');
+            const clocksBefore = await Promise.all(['Typing time remaining', 'Work time remaining'].map(clockValue));
+            const saved = editDuringWait ? page.waitForResponse(r => r.url().endsWith('/api/candidate') && r.request().postDataJSON()?.action === 'save' && r.ok()) : Promise.resolve();
             // Attach immediately so a baseline failure can close the page without an unhandled rejection.
             saved.catch(() => {});
             release.resolve();
             await page.getByText('This sample was interrupted and will be flagged for technical review.', { exact: true }).waitFor();
             assert.equal(await input.inputValue(), edited);
+            if (!editDuringWait) {
+                // The display updates every 250ms; observe it after accepting the stale timestamp.
+                await page.waitForTimeout(350);
+                const clocksAfter = await Promise.all(['Typing time remaining', 'Work time remaining'].map(clockValue));
+                for (const [index, seconds] of clocksAfter.entries()) assert.ok(seconds <= clocksBefore[index], `Countdown gained time: ${clocksBefore[index]} -> ${seconds}`);
+            }
             await saved;
             const persisted = await request(guest, '/api/candidate?token=' + token);
             assert.equal(persisted.answer.text, edited);
