@@ -133,14 +133,21 @@ export async function POST(request: Request) {
             await insertRow('assessments', { id, owner, title: a.title.trim(), description: a.description, status: a.status, modules: JSON.stringify(a.modules), config: a.config ? JSON.stringify(a.config) : null, updated_at: now, revision: 1 });
             return json({ id });
         }
-        if (body.action === 'link' || body.action === 'preview') {
-            const preview = body.action === 'preview';
+        if (body.action === 'link' || body.action === 'preview' || body.action === 'preview-unsaved') {
+            const preview = body.action !== 'link';
             if (!preview && (typeof body.alias !== 'string' || !body.alias.trim() || body.alias.length > 80))
                 return json({ error: 'Add a candidate name or reference (up to 80 characters).' }, 400);
-            const row = await firstRow('assessments', { id: String(body.id), owner });
-            if (!row)
+            const unsaved = body.action === 'preview-unsaved';
+            const sourceId = unsaved ? body.assessment?.id : body.id;
+            const row = sourceId ? await firstRow('assessments', { id: String(sourceId), owner }) : null;
+            if ((!unsaved || sourceId) && !row)
                 return json({ error: 'Assessment not found.' }, 404);
-            const test = assessment(row);
+            let test: Assessment;
+            if (unsaved) {
+                const error = validateAssessment(body.assessment, true);
+                if (error) return json({ error }, 400);
+                test = withTypingAdministration({ ...body.assessment, status: 'ready', modules: body.assessment.modules.map(cleanModule) });
+            } else test = assessment(row!);
             if (body.extraSeconds !== undefined && (!Number.isInteger(body.extraSeconds) || body.extraSeconds < 0 || body.extraSeconds > 86400 || !test.config?.flexible)) return json({ error: 'Extra time requires a shared-timer assessment (0–86,400 seconds).' }, 400);
             if (test.config && body.extraSeconds) test.config = { ...test.config, workSeconds: test.config.workSeconds + body.extraSeconds, adjustmentSeconds: body.extraSeconds };
             if (test.status !== 'ready')
@@ -149,7 +156,7 @@ export async function POST(request: Request) {
             const token = Array.from(crypto.getRandomValues(new Uint8Array(32)), byte => byte.toString(16).padStart(2, '0')).join('');
             const table = preview ? 'preview_attempts' : 'attempts';
             await deleteExpiredPreviews(owner, now);
-            await insertRow(table, { id, owner, assessment_id: test.id, token_hash: await hashToken(token), alias: preview ? 'Preview' : body.alias.trim(), snapshot: JSON.stringify(test), status: 'not-started', created_at: now, answers: '{}', demo: 0, revision: 1, expires_at: now + (preview ? 3600000 : (test.config?.linkExpiryDays ?? 7) * 86400000), revoked: 0 });
+            await insertRow(table, { id, owner, assessment_id: row?.id ?? null, token_hash: await hashToken(token), alias: preview ? 'Preview' : body.alias.trim(), snapshot: JSON.stringify(test), status: 'not-started', created_at: now, answers: '{}', demo: 0, revision: 1, expires_at: now + (preview ? 3600000 : (test.config?.linkExpiryDays ?? 7) * 86400000), revoked: 0 });
             return json({ id, path: `/take/${token}` });
         }
         if (body.action === 'review') {
