@@ -2,7 +2,7 @@ import { getAssessmentAdmin } from '@/app/admin-auth';
 import { canEdit } from '@/lib/permissions';
 import { NextResponse } from 'next/server';
 import { sameOrigin } from '@/lib/request-origin';
-import { firstRow, updateRows, hashToken, RecordRow } from '@/db/store';
+import { firstRow, updateRows, hashToken, RecordRow } from '@/db/privileged-store';
 import { Assessment, Answer, scoreAttempt, workDuration, sectionDuration, canFinishTypingEarly } from '@/lib/assessment';
 import { flexibleCommand } from './flexible';
 import { flowModule, flowAnswer, questionAnswer, moveQuestion, hasNextQuestion } from '@/lib/candidate-flow';

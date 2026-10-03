@@ -41,7 +41,7 @@ try:
     for c,email in [(owner,'recruiter@qa.invalid'),(other,'second@qa.invalid'),(guest,'guest@qa.invalid')]:good(c,'/auth/login',{'email':email,'password':'Local-QA-Only-57!Password'})
     check('unsigned admin API is protected', request(signedout,'/api/admin')[0]==401)
     check('authenticated non-admin is denied',request(guest,'/api/admin')[0]==401)
-    check('authenticated non-member page has no workspace', 'Workspace access required' in good(guest,'/') and 'Customer support essentials' not in good(guest,'/'))
+    check('authenticated non-member sees business setup without workspace data', 'Set up your business' in good(guest,'/') and 'Customer support essentials' not in good(guest,'/'))
     data=workspace();count=len(data['attempts'])
     check('sample seed action removed',request(owner,'/api/admin',{'action':'seed'})[0]==400 and len(workspace()['attempts'])==count)
     check('professional default remains nine minutes',sum(m['seconds'] for m in data['presets'])==540 and all(q['explanation'] for m in data['presets'] for q in m.get('questions',[])))

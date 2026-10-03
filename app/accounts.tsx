@@ -8,13 +8,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { roles, roleLabels, roleDescriptions, type WorkspaceAccount, type WorkspaceRole } from '@/lib/permissions';
 
-async function change(body: unknown) {
-    const response = await fetch('/api/accounts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+async function change(body: unknown, tenantId: string) {
+    const response = await fetch('/api/accounts', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': tenantId }, body: JSON.stringify(body) });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'The account could not be saved.');
     return data as { setupPath?: string | null };
 }
-export default function Accounts() {
+export default function Accounts({ tenantId }: { tenantId: string }) {
     const [accounts, setAccounts] = useState<WorkspaceAccount[]>([]);
     const [userId, setUserId] = useState('');
     const [loaded, setLoaded] = useState(false);
@@ -28,19 +28,19 @@ export default function Accounts() {
     const [suspending, setSuspending] = useState<WorkspaceAccount | null>(null);
     const load = useCallback(async () => {
         try {
-            const response = await fetch('/api/accounts');
+            const response = await fetch('/api/accounts', { headers: { 'X-Tenant-Id': tenantId } });
             const data = await response.json();
             if (!response.ok) throw new Error(data.error);
             setAccounts(data.accounts); setUserId(data.userId); setError('');
         } catch (error) { setError((error as Error).message); }
         finally { setLoaded(true); }
-    }, []);
+    }, [tenantId]);
     useEffect(() => { const timer = setTimeout(() => void load(), 0); return () => clearTimeout(timer); }, [load]);
     async function run(body: unknown) {
         if (busy) return;
         setBusy(true);
         try {
-            const data = await change(body);
+            const data = await change(body, tenantId);
             await load();
             if (data.setupPath) setSetupLink(window.location.origin + data.setupPath);
             setAdding(false); setSuspending(null);

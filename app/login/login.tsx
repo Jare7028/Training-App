@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +40,7 @@ export default function Login({ configured }: { configured: boolean }) {
         <p className={styles.feedback} role="status" aria-live="polite">{message}</p>
         <Button disabled={busy} type="submit">{busy ? 'Please wait…' : 'Sign in'}</Button>
         <Button className={styles.recovery} disabled={busy} variant="link" type="button" onClick={reset}>Forgot password?</Button>
+        <p className={styles.candidateHelp}>New business? <Link href="/signup">Create an account</Link></p>
         <p className={styles.candidateHelp}>Taking an assessment? Use your invitation link.</p>
     </form>;
 }

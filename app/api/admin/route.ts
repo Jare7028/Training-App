@@ -6,13 +6,16 @@ import { getAssessmentAdmin } from '@/app/admin-auth';
 import { allRows, firstRow, insertRow, updateRows, deleteExpiredPreviews, hashToken, RecordRow } from '@/db/store';
 import { Assessment, validateAssessment, scoreAttempt, reviewCriteria, Review, TestModule, cleanModule, withTypingAdministration } from '@/lib/assessment';
 import { canEdit } from '@/lib/permissions';
+import { updateRows as completeExpiredAttempt } from '@/db/privileged-store';
 export const dynamic = 'force-dynamic';
 const json = (data: unknown, status = 200) => NextResponse.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
 function assessment(r: RecordRow): Assessment { return withTypingAdministration({ id: String(r.id), title: String(r.title), description: String(r.description), status: r.status as Assessment['status'], modules: JSON.parse(String(r.modules)), updatedAt: Number(r.updated_at), revision: Number(r.revision), config: r.config ? JSON.parse(String(r.config)) : undefined }); }
 function attempt(r: RecordRow) { const snapshot = JSON.parse(String(r.snapshot)); return { id: r.id, assessmentId: r.assessment_id, title: snapshot.title, alias: r.alias, status: r.status, createdAt: r.created_at, startedAt: r.started_at, deadline: r.deadline, completedAt: r.result ? JSON.parse(String(r.result)).completedAt : null, modules: snapshot.modules, config: snapshot.config, answers: JSON.parse(String(r.answers)), result: r.result ? JSON.parse(String(r.result)) : null, review: r.review ? JSON.parse(String(r.review)) : null, expiresAt: r.expires_at, revoked: !!r.revoked, revision: r.revision }; }
-export async function GET() {
+export async function GET(request: Request) {
     try {
         const user = await getAssessmentAdmin();
+        const requestedTenant = request.headers.get('x-tenant-id');
+        if (user && requestedTenant && requestedTenant !== user.tenantId) return json({ error: 'The selected business changed. Reload before continuing.' }, 409);
         if (!user)
             return json({ error: 'Sign in to open your assessment workspace.' }, 401);
         const [tests, rows, library] = await Promise.all([allRows('assessments', { owner: user.workspaceOwner }, { order: 'updated_at' }), allRows('attempts', { owner: user.workspaceOwner, demo: 0 }, { order: 'created_at', limit: 200 }), allRows('modules', { owner: user.workspaceOwner }, { order: 'updated_at' })]);
@@ -21,7 +24,7 @@ export async function GET() {
             if (row.status === 'in-progress' && Number(row.deadline) + 2500 <= Date.now()) {
                 const snapshot = JSON.parse(String(row.snapshot));
                 const result = scoreAttempt(snapshot.modules, JSON.parse(String(row.answers)), Number(row.deadline), true);
-                const update = await updateRows('attempts', { status: 'completed', result: JSON.stringify(result), revision: Number(row.revision) + 1 }, { id: row.id, owner: user.workspaceOwner, revision: row.revision, status: 'in-progress' });
+                const update = await completeExpiredAttempt('attempts', { status: 'completed', result: JSON.stringify(result), revision: Number(row.revision) + 1 }, { id: row.id, owner: user.workspaceOwner, revision: row.revision, status: 'in-progress' });
                 if (update) {
                     row.status = 'completed';
                     row.result = JSON.stringify(result);
@@ -41,6 +44,8 @@ export async function GET() {
 export async function POST(request: Request) {
     try {
         const user = await getAssessmentAdmin();
+        const requestedTenant = request.headers.get('x-tenant-id');
+        if (user && requestedTenant && requestedTenant !== user.tenantId) return json({ error: 'The selected business changed. Reload before continuing.' }, 409);
         if (!user)
             return json({ error: 'Sign in to continue.' }, 401);
         if (!canEdit(user.role)) return json({ error: 'Your Viewer role has read-only access.' }, 403);
