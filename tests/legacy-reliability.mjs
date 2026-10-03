@@ -202,6 +202,47 @@ try {
             assert.equal(persisted.sectionDeadline, state.sectionDeadline);
         } finally { release.resolve(); await page.close(); }
     });
+    for (const flexible of [true, false]) await run(`${flexible ? 'flexible' : 'legacy'} delayed early typing finish preserves accepted text`, async () => {
+        const current = await request(admin, '/api/admin');
+        const original = current.assessments.find(t => t.id === assessmentId);
+        const sample = structuredClone(assessment.modules[1]);
+        const fixture = { ...assessment, id: assessmentId, revision: original.revision, modules: [sample], config: { ...assessment.config, flexible } };
+        await request(admin, '/api/admin', { action: 'save', assessment: fixture });
+        const { token, url } = await assignment();
+        let state = await request(guest, '/api/candidate?token=' + token);
+        state = await command(token, state, 'start');
+        if (flexible) await command(token, state, 'typing-start');
+        const intercepted = barrier(), release = barrier();
+        const page = await guest.newPage(); page.on('pageerror', e => errors.push(e.message));
+        try {
+            await page.route('**/api/candidate', async route => {
+                if (route.request().postDataJSON()?.action === (flexible ? 'typing-finish' : 'advance')) {
+                    const response = await route.fetch();
+                    assert.equal(response.status(), 200);
+                    intercepted.resolve(); await release.promise; await route.fulfill({ response });
+                } else await route.continue();
+            });
+            await page.goto(url);
+            const typed = page.getByRole('textbox', { name: 'Your typed copy', exact: true });
+            await typed.fill(sample.passage);
+            if (flexible) await page.getByRole('button', { name: 'Finish complete passage early', exact: true }).click();
+            else {
+                await page.getByRole('button', { name: 'Submit assessment', exact: true }).click();
+                await page.getByRole('alertdialog').getByRole('button', { name: 'Submit assessment', exact: true }).click();
+            }
+            await waitForSignal(intercepted.promise);
+            await typed.focus(); await page.keyboard.press('End'); await page.keyboard.press('Backspace');
+            const accepted = await typed.inputValue();
+            release.resolve();
+            if (flexible) await page.getByText('Typing saved and locked.', { exact: true }).waitFor();
+            else await page.getByRole('heading', { name: /You’re all done/ }).waitFor();
+            const { data, error } = await db.from('attempts').select('answers').eq('id', attempts.at(-1)).single();
+            if (error) throw error;
+            const answers = typeof data.answers === 'string' ? JSON.parse(data.answers) : data.answers;
+            assert.equal(answers[sample.id].text, accepted, 'Typing must not accept edits the finishing snapshot cannot save');
+            assert.equal(answers[sample.id].text, sample.passage);
+        } finally { release.resolve(); await page.close(); }
+    });
     assert.deepEqual(errors, []);
     assert.deepEqual(failures, [], 'Candidate reliability regressions');
 } finally {
