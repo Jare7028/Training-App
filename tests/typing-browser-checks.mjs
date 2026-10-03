@@ -22,7 +22,7 @@ export async function checkTypingInteraction(page, passage, pass, audit, device,
     pass(device+' real keystrokes move the caret, mark wrong words and remove corrected mistakes');
     const beforePaste=await input.inputValue();
     await input.evaluate(node=>{const data=new DataTransfer();data.setData('text/plain','PASTED ANSWER');node.dispatchEvent(new ClipboardEvent('paste',{bubbles:true,cancelable:true,clipboardData:data}));});
-    assert.equal(await input.inputValue(),beforePaste);await stage.getByText('Please type the passage. Pasting is disabled for this sample.',{exact:true}).waitFor();
+    assert.equal(await input.inputValue(),beforePaste);await stage.getByText('Pasting is disabled.',{exact:true}).waitFor();
     await input.evaluate(node=>node.dispatchEvent(new DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer:new DataTransfer()})));
     assert.equal(await input.inputValue(),beforePaste);
     await input.press('ControlOrMeta+Home');

@@ -2,7 +2,7 @@ import { getAssessmentAdmin } from '@/app/admin-auth';
 import { NextResponse } from 'next/server';
 import { sameOrigin } from '@/lib/request-origin';
 import { firstRow, updateRows, hashToken, RecordRow } from '@/db/store';
-import { Assessment, Answer, candidateModule, duration, scoreAttempt, workDuration } from '@/lib/assessment';
+import { Assessment, Answer, candidateModule, duration, scoreAttempt, workDuration, sectionDuration, canFinishTypingEarly } from '@/lib/assessment';
 import { flexibleCommand } from './flexible';
 export const dynamic = 'force-dynamic';
 const json = (data: unknown, status = 200) => NextResponse.json(data, { status, headers: { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
@@ -22,7 +22,7 @@ async function find(token: string) {
     if (row.revoked || Number(row.expires_at) <= Date.now()) return null;
     return row;
 }
-function view(row: RecordRow) { const t: Assessment = JSON.parse(String(row.snapshot)); const index = Number(row.current_index); const section = t.modules[index]; return { id: row.id, title: t.title, description: t.description, alias: row.alias, status: row.status, preview: !!row.preview, seconds: workDuration(t), config: t.config, ...(t.config?.flexible && row.status === 'in-progress' ? { modules: t.modules.map(candidateModule), allAnswers: JSON.parse(String(row.answers)) } : {}), sections: t.modules.map(m => ({ title: m.title, kind: m.kind, seconds: m.seconds })), currentIndex: index, module: row.status === 'in-progress' && section ? candidateModule(section) : null, answer: row.status === 'in-progress' && section ? JSON.parse(String(row.answers))[section.id] || {} : {}, startedAt: row.started_at, deadline: row.deadline, sectionDeadline: row.section_started_at && section ? Math.min(Number(row.deadline), Number(row.section_started_at) + section.seconds * 1000) : null, serverNow: Date.now(), revision: row.revision }; }
+function view(row: RecordRow) { const t: Assessment = JSON.parse(String(row.snapshot)); const index = Number(row.current_index); const section = t.modules[index]; return { id: row.id, title: t.title, description: t.description, alias: row.alias, status: row.status, preview: !!row.preview, seconds: workDuration(t), config: t.config, ...(t.config?.flexible && row.status === 'in-progress' ? { modules: t.modules.map(candidateModule), allAnswers: JSON.parse(String(row.answers)) } : {}), sections: t.modules.map(m => ({ title: m.title, kind: m.kind, seconds: m.seconds })), currentIndex: index, module: row.status === 'in-progress' && section ? candidateModule(section) : null, answer: row.status === 'in-progress' && section ? JSON.parse(String(row.answers))[section.id] || {} : {}, startedAt: row.started_at, deadline: row.deadline, sectionDeadline: row.section_started_at && section ? Math.min(Number(row.deadline), Number(row.section_started_at) + sectionDuration(section) * 1000) : null, serverNow: Date.now(), revision: row.revision }; }
 async function expire(row: RecordRow) { if (row.status === 'in-progress' && Number(row.deadline) + 2500 <= Date.now()) {
     const t: Assessment = JSON.parse(String(row.snapshot));
     const result = scoreAttempt(t.modules, JSON.parse(String(row.answers)), Number(row.deadline), true);
@@ -90,7 +90,7 @@ export async function POST(request: Request) {
         const section = t.modules[index];
         if (!section)
             return json({ error: 'Invalid assessment state.' }, 400);
-        const sectionDeadline = Math.min(Number(row.deadline), Number(row.section_started_at) + section.seconds * 1000);
+        const sectionDeadline = Math.min(Number(row.deadline), Number(row.section_started_at) + sectionDuration(section) * 1000);
         const answers: Record<string, Answer> = JSON.parse(String(row.answers));
         const a = body.answer;
         if (!a || typeof a !== 'object')
@@ -115,12 +115,17 @@ export async function POST(request: Request) {
         // A small network grace window accepts a final buffered answer, never extends the clock.
         if (now <= sectionDeadline + 2500)
             answers[section.id] = clean;
+        if (section.kind === 'typing' && (section.typingMode === 'prefix-v1' || section.typingSeconds !== undefined || canFinishTypingEarly(section)) && now <= sectionDeadline + 2500) {
+            const complete = body.action === 'advance' || now >= sectionDeadline;
+            clean.typing = { startedAt: Number(row.section_started_at), deadline: sectionDeadline, complete, ...(complete ? {seconds: Math.min(sectionDuration(section), Math.max(.001, (now-Number(row.section_started_at))/1000)), ceiling: now < sectionDeadline} : {}) };
+            answers[section.id] = clean;
+        }
         let next = index;
         let started = row.section_started_at;
         let status = row.status;
         let result = row.result;
         if (body.action === 'advance' || now >= sectionDeadline) {
-            if (section.kind === 'typing' && now < sectionDeadline)
+            if (section.kind === 'typing' && now < sectionDeadline && !(canFinishTypingEarly(section) && clean.text?.normalize('NFC') === section.passage?.normalize('NFC')))
                 return json({ error: 'Continue typing until the sample timer ends.' }, 400);
             next++;
             started = now;

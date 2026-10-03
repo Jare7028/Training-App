@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { firstRow, updateRows, RecordRow } from '@/db/store';
-import { Answer, Assessment, scoreAttempt, workDuration, typingSeconds } from '@/lib/assessment';
+import { Answer, Assessment, scoreAttempt, workDuration, typingSeconds, canFinishTypingEarly } from '@/lib/assessment';
 
 type Command = { action: string; revision: number; answer?: Answer; index?: number };
 export async function flexibleCommand(row: RecordRow, body: Command, view: (row: RecordRow) => unknown) {
@@ -35,7 +35,7 @@ export async function flexibleCommand(row: RecordRow, body: Command, view: (row:
                     if (body.action === 'typing-finish') {
                         const exact = (existing.text || '').normalize('NFC') === (section.passage || '').normalize('NFC');
                         const seconds = typingSeconds(section);
-                        if (now < existing.typing.deadline && (!exact || section.typingMode !== 'prefix-v1')) return fail(`Type for the full ${seconds} seconds${section.typingMode === 'prefix-v1' ? ', or finish the complete passage accurately' : ''}.`);
+                        if (now < existing.typing.deadline && (!exact || !canFinishTypingEarly(section))) return fail(`Type for the full ${seconds} seconds${canFinishTypingEarly(section) ? ', or finish the complete passage accurately' : ''}.`);
                         existing.typing.complete = true;
                         existing.typing.ceiling = exact && now < existing.typing.deadline;
                         existing.typing.seconds = Math.min(seconds, Math.max(.001, (now - existing.typing.startedAt) / 1000));

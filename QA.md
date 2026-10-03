@@ -51,3 +51,13 @@ The review rerun also caught an intermittent failure in the existing desktop typ
 The legacy browser rerun exposed a fixture collision: repeated runs left identically named synthetic library modules, so its broad selector matched multiple buttons. The fixture now has a run-specific title and an exact selector. Earlier local fixtures are preserved.
 
 After the review corrections, the production build, typecheck, lint, four recovery regressions, 25 core workflow checks, 32 core browser checks and twelve legacy/reuse browser checks passed. The scoring reference comparison also passed all 14,641 alignments. The unchanged desktop focus assertion passed; no timeouts or accessibility assertions were relaxed.
+
+## Editable assessment rules and reduced copy
+
+Removed the ten-minute validation limit and editor readiness block. Timing mode, work/section budgets, typing duration, exact-passage early completion, paste permission and candidate link expiry are assessor settings stored with reusable modules or assessment configuration. Candidate policy, spelling tools and data-use notice can be edited or left blank in either timer mode. The supplied core keeps its existing defaults. Existing assignments and completed results retain their saved content.
+
+Workspace footers, repeated instructional paragraphs and field explanations were removed; optional administration fields are grouped under Candidate settings. Actual task instructions, reviewer criteria, actionable save errors and preview status remain available.
+
+The release passed typecheck, lint and a fresh production build; 71 API regression checks, 25 core workflow checks, 32 desktop/mobile core browser checks and twelve legacy/module-reuse browser checks. The independent typing oracle passed all 14,641 alignments. Four connection-recovery regressions and fourteen new test:settings checks also passed. Settings coverage exercises the real module editor, a twenty-minute assessment, saved link expiry, signed-out custom-duration typing, enabled paste, disabled early finish enforced by the server, sequential timing, actual-duration results and preserved assignment snapshots. Desktop and mobile settings include automated WCAG audits.
+
+Legacy default section-timer answer payloads remain compatible. Custom/measured typing records server timing metadata. The new sequential test waits for the active input before reading its deadline; it does not assume a button click has already committed the start request. Paste-rejection checks retain the same input/focus assertions using the shortened user-facing message.

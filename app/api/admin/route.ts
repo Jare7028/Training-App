@@ -123,7 +123,7 @@ export async function POST(request: Request) {
             if (!row)
                 return json({ error: 'Assessment not found.' }, 404);
             const test = assessment(row);
-            if (body.extraSeconds !== undefined && (!Number.isInteger(body.extraSeconds) || body.extraSeconds < 0 || body.extraSeconds > 1800 || !test.config?.flexible)) return json({ error: 'Extra time requires a shared-timer assessment (0–1,800 seconds).' }, 400);
+            if (body.extraSeconds !== undefined && (!Number.isInteger(body.extraSeconds) || body.extraSeconds < 0 || body.extraSeconds > 86400 || !test.config?.flexible)) return json({ error: 'Extra time requires a shared-timer assessment (0–86,400 seconds).' }, 400);
             if (test.config && body.extraSeconds) test.config = { ...test.config, workSeconds: test.config.workSeconds + body.extraSeconds, adjustmentSeconds: body.extraSeconds };
             if (test.status !== 'ready')
                 return json({ error: 'Mark the test ready before creating a link.' }, 400);
@@ -131,7 +131,7 @@ export async function POST(request: Request) {
             const token = Array.from(crypto.getRandomValues(new Uint8Array(32)), byte => byte.toString(16).padStart(2, '0')).join('');
             const table = preview ? 'preview_attempts' : 'attempts';
             await deleteExpiredPreviews(owner, now);
-            await insertRow(table, { id, owner, assessment_id: test.id, token_hash: await hashToken(token), alias: preview ? 'Preview' : body.alias.trim(), snapshot: JSON.stringify(test), status: 'not-started', created_at: now, answers: '{}', demo: 0, revision: 1, expires_at: now + (preview ? 3600000 : 7 * 86400000), revoked: 0 });
+            await insertRow(table, { id, owner, assessment_id: test.id, token_hash: await hashToken(token), alias: preview ? 'Preview' : body.alias.trim(), snapshot: JSON.stringify(test), status: 'not-started', created_at: now, answers: '{}', demo: 0, revision: 1, expires_at: now + (preview ? 3600000 : (test.config?.linkExpiryDays ?? 7) * 86400000), revoked: 0 });
             return json({ id, path: `/take/${token}` });
         }
         if (body.action === 'review') {
