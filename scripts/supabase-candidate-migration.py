@@ -7,9 +7,12 @@ import urllib.error
 import urllib.request
 
 PROJECT = 'nzoumetzzfvxavxdmjis'
-VERSION = '20261003201000'
-NAME = 'candidate_hiring'
-FILE = Path(__file__).resolve().parents[1] / 'supabase/migrations/20261003201000_candidate_hiring.sql'
+MIGRATIONS = {'candidate_hiring': '20261003201000', 'unsaved_previews': '20261003220000'}
+NAME = os.environ.get('MIGRATION', 'candidate_hiring')
+if NAME not in MIGRATIONS:
+    sys.exit('Unsupported migration target.')
+VERSION = MIGRATIONS[NAME]
+FILE = Path(__file__).resolve().parents[1] / f'supabase/migrations/{VERSION}_{NAME}.sql'
 
 
 def query(sql):
@@ -33,6 +36,12 @@ def query(sql):
 
 
 def inspect():
+    if NAME == 'unsaved_previews':
+        return query(f"""select
+            exists(select 1 from supabase_migrations.schema_migrations where version='{VERSION}' and name='{NAME}') as recorded,
+            exists(select 1 from information_schema.columns where table_schema='public' and table_name='preview_attempts' and column_name='assessment_id' and is_nullable='YES') as nullable_ready,
+            exists(select 1 from pg_class where oid='public.preview_attempts'::regclass and relrowsecurity) as isolation_ready
+            """)[0]
     return query(f"""select
         exists(select 1 from supabase_migrations.schema_migrations where version='{VERSION}' and name='{NAME}') as recorded,
         exists(select 1 from information_schema.columns where table_schema='public' and table_name='attempts' and column_name='hiring' and data_type='jsonb' and is_nullable='NO') as column_ready,
@@ -50,27 +59,27 @@ def main():
         if before['recorded']:
             if not all(before.values()):
                 sys.exit('Recorded migration has incomplete schema; inspect before repair.')
-            print('Candidate hiring migration already recorded; no SQL replayed.')
+            print(NAME + ' migration already recorded; no SQL replayed.')
         else:
-            if before['column_ready'] or before['constraint_ready']:
-                sys.exit('Unrecorded hiring schema exists; inspect before repair.')
+            if (NAME == 'candidate_hiring' and (before['column_ready'] or before['constraint_ready'])) or (NAME == 'unsaved_previews' and before['nullable_ready']):
+                sys.exit('Unrecorded migration schema exists; inspect before repair.')
             sql = FILE.read_text().strip()
             if not sql.startswith('begin;') or not sql.endswith('commit;'):
                 sys.exit('Migration must have explicit transaction boundaries.')
             body = sql[len('begin;'):-len('commit;')]
             quoted_sql = sql.replace("'", "''")
             transaction = f"""begin;
-                select pg_advisory_xact_lock(hashtext('Training-App candidate_hiring'));
+                select pg_advisory_xact_lock(hashtext('Training-App {NAME}'));
                 {body}
                 insert into supabase_migrations.schema_migrations(version,name,statements)
                 values ('{VERSION}','{NAME}',array['{quoted_sql}']);
                 commit;"""
             query(transaction)
-            print('Candidate hiring metadata migration applied transactionally.')
+            print(NAME + ' migration applied transactionally.')
     after = inspect()
     print(json.dumps(after, sort_keys=True))
     if operation == 'apply' and not all(after.values()):
-        sys.exit('Candidate hiring schema verification failed.')
+        sys.exit('Schema verification failed.')
 
 
 if __name__ == '__main__':
