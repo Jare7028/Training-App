@@ -124,8 +124,15 @@ Verified in an isolated worktree based on `abc7630`, using real local Supabase A
 
 Validation passed: typecheck, lint, production build, 9 tenant scenario groups, 28 account/permission checks, 71 API checks, 31 workflow checks, 18 Supabase security checks, and the existing desktop/mobile browser suite. The local database security advisor reported no issues. Tests use only loopback application, database and mail URLs and remove their exact tenant fixtures.
 
-The live migration preserved existing data, named the existing tenant Resolvable and granted the verified `jaredsbuddy@outlook.com` account global admin. Live application signup and mailbox delivery are pending deployment and Supabase Auth configuration (registration, required email confirmation and custom SMTP); local results do not verify those production settings.
+The live migration preserved existing data, named the existing tenant Resolvable and granted the verified `jaredsbuddy@outlook.com` account global admin. The signup application is deployed. The user subsequently requested immediate signup without confirmation emails; the hosted configuration and live flow are verified below. SMTP and mailbox delivery setup remain paused.
 
+## Immediate hosted signup — 2026-10-03
+
+Used the saved GitHub Actions Supabase management credential to enable public email/password signup with `mailer_autoconfirm=true`. Read-back verification confirmed signup enabled and email confirmation disabled. No SMTP or domain was added.
+
+A scoped production smoke test used two synthetic `@qa.invalid` accounts through the actual signup form. Both were immediately signed in as Admins of separate, empty businesses, even with matching business names. A synthetic assessment created by one business was invisible to the other through both the application API and direct RLS-protected database access. Foreign saves returned 404. Repeated onboarding retained the same tenant, and neither account received global admin access. Native signout and a fresh password login preserved the correct business and assessment.
+
+The live test found that the global no-referrer policy makes native forms send `Origin:null`, which caused signout to return 403. The origin helper now accepts such forms only with browser-controlled same-origin navigation metadata; cross-site, same-site, missing metadata, iframe, and fetch cases remain rejected. Regression checks, typecheck, lint and the Vercel production build passed. The final live test passed all four scenario groups on the permanent Vercel origin. Synthetic sessions, records, memberships, tenants and users were removed by exact tracked identities. Resolvable retained its one assessment, four modules and one attempt, and the existing global admin grant stayed intact.
 
 ## Requests board
 
