@@ -175,3 +175,5 @@
   .request-column-editor { gap: 6px; }
   .request-column-editor button { width: 30px; }
 }
+
+.assess-sidebar .select-field { color: var(--foreground); }
