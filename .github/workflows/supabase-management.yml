@@ -9,7 +9,7 @@ on:
       operation:
         description: Supabase operation
         type: choice
-        options: [verify, enable_signup]
+        options: [verify, require_email_confirmation, enable_signup]
         default: verify
 
 permissions: {}
@@ -56,7 +56,12 @@ jobs:
           print('Supabase management access verified.')
           smtp_configured = bool(config.get('smtp_host') and config.get('smtp_admin_email'))
           operation = os.environ['OPERATION']
-          if operation == 'enable_signup':
+          if operation == 'require_email_confirmation':
+              request('PATCH', {'mailer_autoconfirm': False})
+              config = request()
+              if config.get('mailer_autoconfirm') is not False:
+                  sys.exit('Email confirmation configuration verification failed.')
+          elif operation == 'enable_signup':
               if not smtp_configured:
                   sys.exit('Configure custom SMTP before enabling business registration.')
               request('PATCH', {

@@ -7,3 +7,11 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Existing Supabase management access
+
+The user has saved `SUPABASE_ACCESS_TOKEN` in GitHub Actions repository secrets for `Jare7028/Training-App`. Reuse it through `.github/workflows/supabase-management.yml`; the token stays on the GitHub runner. A missing local environment variable or a 403 when listing repository secrets does not mean the saved credential is missing. Do not ask the user to supply it again for that reason.
+
+Run `gh workflow run supabase-management.yml --repo Jare7028/Training-App --ref main -f operation=verify`, then inspect the workflow run with `gh run list` and `gh run view --log`. The workflow exposes only safe status values. Extend the workflow for other authorized Supabase Management API operations as needed, keeping credentials and full configuration responses out of logs and artifacts. Target the existing project `nzoumetzzfvxavxdmjis`. Never copy the management token into application environment variables or frontend code.
+
+Access was verified on 2026-10-03. Public signup is enabled, email confirmation is required, and custom SMTP is not yet configured. Use current workflow output to check subsequent changes.
