@@ -1,11 +1,12 @@
 'use client';
 import { cloneElement, isValidElement, useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import Accounts from './accounts';
 import Requests from './requests';
 import TenantSwitcher, { type Business } from './tenant-switcher';
 import { canEdit, roleLabels, type WorkspaceRole } from '@/lib/permissions';
-import { LayoutGrid, Users, Library, Plus, Clock, Check, Keyboard, SpellCheck, MessageSquare, Brain, ChevronUp, ChevronDown, Copy, ExternalLink, FileText, Search, RefreshCw, Trash2, CheckCircle2, Download, ShieldCheck, Kanban } from 'lucide-react';
+import { LayoutGrid, Users, Library, Plus, Clock, Check, Keyboard, SpellCheck, MessageSquare, Brain, ChevronUp, ChevronDown, Copy, ExternalLink, FileText, Search, RefreshCw, Trash2, CheckCircle2, Download, ShieldCheck, Kanban, ChartNoAxesCombined } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -23,9 +24,11 @@ import { toast } from 'sonner';
 import { Assessment, Attempt, TestModule, ModuleKind, Question, Review, kindLabels, copyModule, SavedModule, formatTime, rubric, validateAssessment, reviewCriteria, workDuration, AssessmentConfig, Criterion, withTypingAdministration, typingSeconds, canFinishTypingEarly, sectionDuration } from '@/lib/assessment';
 const icons = { spelling: SpellCheck, grammar: FileText, typing: Keyboard, problem: Brain, writing: MessageSquare };
 const kinds = Object.keys(kindLabels) as ModuleKind[];
-const nav = [{ id: 'tests', title: 'Assessments', icon: LayoutGrid }, { id: 'candidates', title: 'Candidate review', icon: Users }, { id: 'library', title: 'Module library', icon: Library }, { id: 'requests', title: 'Requests', icon: Kanban }, { id: 'accounts', title: 'Accounts & permissions', icon: ShieldCheck }];
+const Analytics = dynamic(() => import('./analytics'), { loading: () => <Skeleton className="h-72 w-full"/> });
+const nav = [{ id: 'tests', title: 'Assessments', icon: LayoutGrid }, { id: 'candidates', title: 'Candidate review', icon: Users }, { id: 'library', title: 'Module library', icon: Library }, { id: 'analytics', title: 'Analytics', icon: ChartNoAxesCombined }, { id: 'requests', title: 'Requests', icon: Kanban }, { id: 'accounts', title: 'Accounts & permissions', icon: ShieldCheck }];
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 const fmtDate = (n: number) => new Date(n).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+const awaitingWritingReview = (attempt: Attempt) => attempt.status === 'completed' && !attempt.review && attempt.modules.some(module => module.kind === 'writing');
 async function sendRequest(body: unknown, tenantId: string) { const r = await fetch('/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': tenantId }, body: JSON.stringify(body) }); const data = await r.json() as {
     error: string;
     id: string;
@@ -122,7 +125,7 @@ export default function Admin({ tenantId, tenantName, isGlobalAdmin, businesses 
         };
     }).modelContext; if (!model)
         return; const controller = new AbortController(); model.registerTool({ name: 'read_assessment_workspace', title: 'Read assessment workspace', description: 'Read the loaded assessment titles, time budgets and candidate review counts. This does not modify anything.', inputSchema: { type: 'object', properties: {}, additionalProperties: false }, annotations: { readOnlyHint: true, untrustedContentHint: true }, execute: (input: unknown) => { if (!input || typeof input !== 'object' || Object.keys(input).length)
-            throw new Error('Expected an empty object.'); return { assessments: tests.map(t => ({ id: t.id, title: t.title, status: t.status, seconds: workDuration(t) })), submitted: attempts.filter(a => a.status === 'completed').length, awaitingReview: attempts.filter(a => a.status === 'completed' && !a.review).length }; } }, { signal: controller.signal }); return () => controller.abort(); }, [tests, attempts]);
+            throw new Error('Expected an empty object.'); return { assessments: tests.map(t => ({ id: t.id, title: t.title, status: t.status, seconds: workDuration(t) })), submitted: attempts.filter(a => a.status === 'completed').length, awaitingReview: attempts.filter(awaitingWritingReview).length }; } }, { signal: controller.signal }); return () => controller.abort(); }, [tests, attempts]);
     const openEdit = (t: Assessment) => { setLibraryEdit(null); const v = clone(t); if (!v.id && !v.config) v.config = {...{flexible:true,workSeconds:600,introductionSeconds:0,code:'',supportEmail:'',spellCheck:true,toolPolicy:'',notice:''},...withTypingAdministration(v).config,oneQuestionAtATime:true,allowBackNavigation:false}; setEditing(v); setInitial(JSON.stringify(v)); };
     const leaveEdit = () => { if (editing && JSON.stringify(editing) !== initial)
         setDiscard(true);
@@ -168,9 +171,9 @@ export default function Admin({ tenantId, tenantName, isGlobalAdmin, businesses 
         toast.error('Select the link and copy it manually.');
     } };
     const coreTemplate = tests.find(t=>t.config?.code?.startsWith('RES-CS-CORE'));
-    const pending = attempts.filter(a => a.status === 'completed' && !a.review).length;
-    const visible = attempts.filter(a => (a.alias + ' ' + a.title).toLowerCase().includes(query.toLowerCase()) && (filter === 'all' || (filter === 'pending' ? a.status === 'completed' && !a.review : filter === 'reviewed' ? !!a.review : a.status !== 'completed')));
-    const candidates = (rows: Attempt[]) => <Table><TableHeader><TableRow><TableHead>Candidate</TableHead><TableHead>Assessment</TableHead><TableHead>Objective score</TableHead><TableHead>Writing review</TableHead><TableHead>Date</TableHead><TableHead><span className="sr-only">Actions</span></TableHead></TableRow></TableHeader><TableBody>{rows.map(a => <TableRow key={a.id}><TableCell><div className="candidate-cell"><span className="avatar">{a.alias.split(' ').map(s => s[0]).slice(0, 2).join('')}</span><div><strong>{a.alias}</strong>{a.revoked && <small>Link revoked</small>}</div></div></TableCell><TableCell>{a.title}</TableCell><TableCell data-label="Objective score">{a.result?.objective != null ? <span className="score-inline">{a.result.decisions ? `${a.result.objectiveCorrect} of ${a.result.objectiveTotal}` : a.result.objective}<small>{a.result.decisions ? ' correct' : '/100'}</small></span> : <Status value={a.status}/>}</TableCell><TableCell data-label="Writing review">{a.status !== 'completed' ? <span className="muted">—</span> : a.review ? <Status value={a.review.outcome}/> : <span className="awaiting">Awaiting review</span>}</TableCell><TableCell>{fmtDate(a.completedAt || a.createdAt)}</TableCell><TableCell><Button variant="outline" onClick={() => setActive(a)} aria-label={`Review ${a.alias}`}>{a.status === 'completed' ? 'Review' : 'View'}</Button>{editable && a.status !== 'completed' && !a.revoked && <Button variant="ghost" disabled={busy} aria-label={`Revoke link for ${a.alias}`} onClick={() => run(async () => { await request({ action: 'revoke', id: a.id, revision: a.revision }); await load(); toast.success('Candidate link revoked.'); })}>Revoke link</Button>}</TableCell></TableRow>)}{!rows.length && <TableRow><TableCell colSpan={6}><div className="empty-block">No candidates match this view</div></TableCell></TableRow>}</TableBody></Table>;
+    const pending = attempts.filter(awaitingWritingReview).length;
+    const visible = attempts.filter(a => (a.alias + ' ' + a.title).toLowerCase().includes(query.toLowerCase()) && (filter === 'all' || (filter === 'pending' ? awaitingWritingReview(a) : filter === 'reviewed' ? !!a.review : a.status !== 'completed')));
+    const candidates = (rows: Attempt[]) => <Table><TableHeader><TableRow><TableHead>Candidate</TableHead><TableHead>Assessment</TableHead><TableHead>Objective score</TableHead><TableHead>Writing review</TableHead><TableHead>Date</TableHead><TableHead><span className="sr-only">Actions</span></TableHead></TableRow></TableHeader><TableBody>{rows.map(a => <TableRow key={a.id}><TableCell><div className="candidate-cell"><span className="avatar">{a.alias.split(' ').map(s => s[0]).slice(0, 2).join('')}</span><div><strong>{a.alias}</strong>{a.revoked && <small>Link revoked</small>}</div></div></TableCell><TableCell>{a.title}</TableCell><TableCell data-label="Objective score">{a.result?.objective != null ? <span className="score-inline">{a.result.decisions ? `${a.result.objectiveCorrect} of ${a.result.objectiveTotal}` : a.result.objective}<small>{a.result.decisions ? ' correct' : '/100'}</small></span> : <Status value={a.status}/>}</TableCell><TableCell data-label="Writing review">{a.status !== 'completed' ? <span className="muted">—</span> : a.review ? <Status value={a.review.outcome}/> : a.modules.some(module => module.kind === 'writing') ? <span className="awaiting">Awaiting review</span> : <span className="muted">Not required</span>}</TableCell><TableCell>{fmtDate(a.completedAt || a.createdAt)}</TableCell><TableCell><Button variant="outline" onClick={() => setActive(a)} aria-label={`Review ${a.alias}`}>{a.status === 'completed' ? 'Review' : 'View'}</Button>{editable && a.status !== 'completed' && !a.revoked && <Button variant="ghost" disabled={busy} aria-label={`Revoke link for ${a.alias}`} onClick={() => run(async () => { await request({ action: 'revoke', id: a.id, revision: a.revision }); await load(); toast.success('Candidate link revoked.'); })}>Revoke link</Button>}</TableCell></TableRow>)}{!rows.length && <TableRow><TableCell colSpan={6}><div className="empty-block">No candidates match this view</div></TableCell></TableRow>}</TableBody></Table>;
     return <SidebarProvider><Sidebar className="assess-sidebar"><SidebarHeader><Link className="brand" href="/" prefetch={false} onClick={e => { if (editing) {
         e.preventDefault();
         leaveEdit();
@@ -182,7 +185,8 @@ export default function Admin({ tenantId, tenantName, isGlobalAdmin, businesses 
  {!loaded ? <div className="loading-grid"><Skeleton className="h-12 w-72"/><Skeleton className="h-64 w-full"/></div> : editing ? <Builder key={initial} presets={presets} library={library} moduleOnly={!!libraryEdit} assessment={editing} setAssessment={setEditing} onClose={leaveEdit} onSave={save} busy={busy}/> : <>
  {page === 'accounts' && role === 'admin' && <Accounts tenantId={tenantId}/>}
  {page === 'requests' && <Requests key={tenantId}/>}
- {role === 'viewer' && page !== 'requests' && <div className="mini-notice">Viewer access: you can read assessments, modules and candidate results.</div>}
+ {page === 'analytics' && <Analytics key={tenantId} tenantId={tenantId} onReview={() => { setPage('candidates'); setQuery(''); setFilter('all'); }} onRequests={() => setPage('requests')}/>}
+ {role === 'viewer' && page !== 'requests' && page !== 'analytics' && <div className="mini-notice">Viewer access: you can read assessments, modules and candidate results.</div>}
  {page === 'tests' && <><div className="page-heading"><div><h1>Assessments</h1></div>{editable && <Button className="primary-action" onClick={() => setCreate(true)}><Plus />Create assessment</Button>}</div>
  {!tests.length ? <section className="start-panel"><h2>No assessments yet</h2></section> : <div className="assessment-grid">{tests.map(t => <article className="assessment-card" key={t.id}>
     <div className="assessment-title"><h2>{t.title}</h2>{t.status === 'draft' && <Status value="draft"/>}</div>

@@ -16,7 +16,7 @@ npm run test:setup
 npm run dev:local
 ```
 
-`db:start` uses the official Supabase CLI and its digest-verified slim container images. The CLI's local authentication health check runs wget through inherited proxy settings in this cloud environment and receives a proxy 403 even though GoTrue is available. The documented `--ignore-health-check` option keeps the containers running; `scripts/local-ready.mjs` independently requires a successful authentication health response and queries all eight database tables. A failed functional check still fails startup.
+`db:start` uses the official Supabase CLI and its digest-verified slim container images. The CLI's local authentication health check runs wget through inherited proxy settings in this cloud environment and receives a proxy 403 even though GoTrue is available. The documented `--ignore-health-check` option keeps the containers running; `scripts/local-ready.mjs` independently requires a successful authentication health response, queries all eleven database tables and checks private image storage. A failed functional check still fails startup.
 
 `test:setup` refuses non-loopback databases, creates only three local test accounts, and writes an ignored `.env.local`. It never seeds sample candidates or assessments. `dev:local` explicitly isolates these test variables from any hosted-project variables injected by the cloud. Local QA password: `Local-QA-Only-57!Password`; emails: `recruiter@qa.invalid`, `second@qa.invalid`, `guest@qa.invalid`. Only the first two are authorised admins. These fixtures must never be deployed.
 
@@ -98,3 +98,13 @@ Run these sequentially with the other suites. For production-mode local QA, stop
 Open **Requests** in the sidebar to create, edit and assign cards to active users in the selected business. Drag cards between columns or change the Column field in the request editor. Edit columns to rename, add or reorder them. Search and assignment filters, priorities and archiving are available. Viewers can read requests and images; Admins and Editors can change them.
 
 Paste a screenshot into an open request editor, or use Add images. Images and request details are saved in Supabase, with private, session-protected image access. Large images are resized before upload, and the server validates and normalises them. Local development now starts Supabase Storage too. Apply `20261003143000_requests_board.sql` after the business tenant migrations; it creates an empty board schema and a private bucket, with no sample requests. Run `npm run test:requests` for the loopback-only clipboard, persistence and isolation checks.
+
+## Analytics
+
+Open **Analytics** for assessment and Requests reports. Recharts 3.8.0 supplies the interactive, keyboard-accessible charts under its MIT license; see [OPEN_SOURCE_NOTICES.md](OPEN_SOURCE_NOTICES.md). The chart bundle loads when Analytics opens. No external analytics account, tracking script, data warehouse or new database migration is required.
+
+Assessment reports filter the cohort by candidate-link creation date (UTC) and assessment. They show current progress, completion, question-weighted objective accuracy, writing review outcomes, snapshot-specific module results, measured typing medians, human criterion ratings and work time. Previews are excluded. The server reads every page of the tenant's records, including historical assignments beyond the candidate screen's 200-record limit. Written work never receives an automatic grade; typing never becomes a hiring verdict. Interrupted typing and not-scorable writing ratings are excluded from numeric summaries. Empty measurements display a dash.
+
+Requests reports filter by request creation date and use the business's current custom columns, assignees, priorities and archive state. No column name implies completion. Counts include inactive assignees still holding cards. All reports offer custom dates, refresh, readable chart data and CSV export with spreadsheet-formula protection. Definitions are available in a collapsed section.
+
+`GET /api/analytics` uses the signed-in Supabase session and existing business RLS, checks stale tenant headers and returns private/no-store aggregates. It exposes no candidate aliases, answers, scoring keys, bearer tokens, image paths or reviewer notes. Admin, Editor and Viewer can read it; suspension revokes access. Run `npm run test:analytics` for metric and loopback-only API/browser checks; synthetic records are tracked and removed by exact IDs.
