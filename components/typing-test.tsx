@@ -1,6 +1,6 @@
 'use client';
 import { useDeferredValue, useEffect, useId, useImperativeHandle, useMemo, useRef, useState, type Ref } from 'react';
-import { Check, Clock, Keyboard, Lock } from 'lucide-react';
+import { Check, Clock, Keyboard } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { formatTime, prefixTypingScore, typingScore } from '@/lib/assessment';
 import { typingFeedback } from '@/lib/typing-feedback';
@@ -39,7 +39,7 @@ export default function TypingTest({ passage, value, onChange, mode, seconds, re
             <div className={styles.metric}><span>Character errors</span><strong data-typing-errors>{!value ? '—' : metrics.errors}</strong></div>
         </div>
         {!practice && <div className={styles.timeTrack} aria-hidden="true"><div style={{width: `${mode === 'ready' ? 100 : mode === 'complete' ? 0 : Math.max(0, remaining / seconds * 100)}%`}}/></div>}
-        <div className={styles.referenceHeader}><span><Keyboard size={16}/> {practice ? 'Practice passage' : 'Reference passage'}</span><span>{mode === 'complete' ? <><Lock size={13}/> Sample locked</> : mode === 'ready' ? 'Start when you’re ready' : nextKey ? <>Next key <kbd>{nextKey}</kbd></> : 'End of passage'}</span></div>
+        <div className={styles.referenceHeader}><span><Keyboard size={16}/> {practice ? 'Practice passage' : 'Reference passage'}</span><span>{mode === 'active' && (nextKey ? <>Next key <kbd>{nextKey}</kbd></> : 'End of passage')}</span></div>
         <div className={`${styles.passage} ${focused ? styles.focused : ''}`} ref={viewport} tabIndex={0} role="region" aria-label={practice ? 'Practice reference passage' : 'Typing reference passage'} onClick={focusInput} onKeyDown={e => {if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); focusInput(); }}}>
             <span className={styles.srOnly}>{passage}</span>
             <div aria-hidden="true" className={styles.words}>
@@ -50,9 +50,9 @@ export default function TypingTest({ passage, value, onChange, mode, seconds, re
                 {feedback.activeIndex >= feedback.items.length && mode !== 'complete' && <span ref={active} className={styles.endCaret}/>}
             </div>
         </div>
-        <div className={styles.legend} aria-hidden="true"><span><i className={styles.correctDot}/> Correct</span><span><i className={styles.errorDot}/> Incorrect · underline</span><span><i className={styles.cursorDot}/> Current position</span></div>
-        {mode !== 'ready' && <><label className={styles.inputLabel} htmlFor={id}>{label}<span>{mode === 'complete' ? 'Saved sample' : focused ? 'Keep typing · backspace to correct' : 'Click here to type'}</span></label><Textarea id={id} aria-label={label} ref={ownInput} aria-describedby={id+'-help'} className={styles.input} rows={3} value={value} readOnly={readOnly || mode === 'complete' || (!practice && remaining <= 0)} maxLength={5000} spellCheck={false} autoCorrect="off" autoComplete="off" autoCapitalize="off" placeholder="Type the reference passage here…" onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)} onSelect={e=>setSelection(e.currentTarget.selectionStart)} onPaste={e=>{if(!allowPaste){e.preventDefault();setNotice('Pasting is disabled.');}}} onDrop={e=>{if(!allowPaste){e.preventDefault();setNotice('Dropping text is disabled.');}}} onChange={e=>{if (readOnly || mode !== 'active' || (!practice && remaining <= 0)) return;setSelection(e.target.selectionStart);onChange(e.target.value);setNotice('');}}/>
-        <p id={id+'-help'} className={styles.help}>{mode === 'complete' ? <><Check size={14}/> {practice ? 'Practice complete.' : 'Typing saved and locked.'}</> : 'Backspace to correct.'}</p><p className={styles.notice} role="status">{notice}</p></>}
+
+        {mode !== 'ready' && <><label className={styles.inputLabel} htmlFor={id}>{label}</label><Textarea id={id} aria-label={label} ref={ownInput} aria-describedby={id+'-help'} className={styles.input} rows={3} value={value} readOnly={readOnly || mode === 'complete' || (!practice && remaining <= 0)} maxLength={5000} spellCheck={false} autoCorrect="off" autoComplete="off" autoCapitalize="off" placeholder="Type the reference passage here…" onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)} onSelect={e=>setSelection(e.currentTarget.selectionStart)} onPaste={e=>{if(!allowPaste){e.preventDefault();setNotice('Pasting is disabled.');}}} onDrop={e=>{if(!allowPaste){e.preventDefault();setNotice('Dropping text is disabled.');}}} onChange={e=>{if (readOnly || mode !== 'active' || (!practice && remaining <= 0)) return;setSelection(e.target.selectionStart);onChange(e.target.value);setNotice('');}}/>
+        <p id={id+'-help'} className={mode === 'complete' ? styles.help : styles.srOnly}>{mode === 'complete' ? <><Check size={14}/> {practice ? 'Practice complete.' : 'Typing saved and locked.'}</> : 'Backspace to correct.'}</p><p className={styles.notice} role="status">{notice}</p></>}
     </div>;
 }
 

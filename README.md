@@ -47,6 +47,8 @@ The server-only Supabase credential accesses PostgreSQL. Row-level security is e
 
 See [DEPLOYMENT_HANDOFF.md](DEPLOYMENT_HANDOFF.md), [PRODUCTION_READINESS.md](PRODUCTION_READINESS.md) and [QA.md](QA.md). The production website is https://training-app-ashy-eight.vercel.app. The app account is jaredsbuddy@outlook.com; enter that email on /login and use Forgot password? to choose a password. The Supabase dashboard login is separate.
 
+The assessment list shows each title, duration, module count and the three actions. Candidate results live in Candidate review. Library cards show concise metadata; full instructions remain editable in the module editor. Writing criteria expand individually, with scoring guidance available during review.
+
 ## Customer-service core assessment
 
 The supplied assessment is preserved in `content/customer-service-core-v1.json` as an administrative import source, including confidential answer keys. It is not imported by application client code or served as a public asset. Importing it is an explicit administrator operation; application startup never seeds assessments, modules or candidates. The editable database records, rather than this file, drive the workspace.

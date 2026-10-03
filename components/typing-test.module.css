@@ -31,7 +31,7 @@
 .correctDot { background: #176344; }
 .errorDot { background: #9a1e2c; }
 .cursorDot { background: #173e54; }
-.inputLabel { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: .85rem; font-weight: 550; margin-bottom: 8px; }
+.inputLabel { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: .85rem; font-weight: 550; margin-top: 20px; margin-bottom: 8px; }
 .inputLabel span { font-size: .72rem; font-weight: 400; color: #526572; }
 .test textarea.input { field-sizing: fixed; height: 118px; min-height: 90px; resize: vertical; font-family: ui-monospace, Consolas, monospace; font-size: 1rem; line-height: 1.8; background: #fff; }
 .test textarea.input[readonly] { background: #f7faf8; border-color: #b8cec2; }

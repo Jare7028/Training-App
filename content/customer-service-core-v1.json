@@ -13,7 +13,7 @@
       "kind": "spelling",
       "title": "Edit customer updates",
       "seconds": 105,
-      "instructions": "Choose the edit that keeps the facts, timing and responsibility accurate. All versions may sound polite; use the case details to decide.",
+      "instructions": "Choose the edit that keeps the facts, timing and responsibility accurate.",
       "questions": [
         {
           "id": "f4a81e7f-e674-43de-8be5-5d2ba999f25b",
@@ -64,7 +64,7 @@
       "kind": "typing",
       "title": "Type an accurate case update",
       "seconds": 90,
-      "instructions": "Copy the passage as accurately as you can. Include punctuation, numbers and capital letters. You may use Backspace to correct mistakes. The measured task lasts 60 seconds. You do not need to finish the passage. Your result shows speed and accuracy separately. This practice text is not scored.",
+      "instructions": "Copy the passage accurately, including punctuation, numbers and capital letters.",
       "passage": "Thank you for checking the delivery details. I have updated case 7318 to show that the parcel has not arrived. The courier scan is still under review, so I cannot confirm a delivery time yet. I will contact the courier and send you an update by 15:30 tomorrow, even if the investigation is still open. You do not need to place another order. If the parcel arrives before then, please reply to this message so we can close the enquiry. The delivery address on the order has not been changed. I have also recorded that your preferred contact method is email. Your case will remain with our support team until the next action is confirmed. Any new information from the courier will be added to the case notes.",
       "practice": "Case 2048 is open. The next update is due at 14:30.",
       "typingMode": "prefix-v1",
@@ -77,7 +77,7 @@
       "kind": "problem",
       "title": "Apply a delivery policy",
       "seconds": 135,
-      "instructions": "Read the policy and choose the best-supported action. New case information will appear after your first decision. You can revisit your decisions before submitting.",
+      "instructions": "Use the policy and case facts to choose the best action.",
       "context": "Delivery policy\n1. For a parcel marked delivered but not received, confirm the address and ask the customer to check the nominated safe place and other household members\n2. Once at least 24 elapsed hours have passed since the delivered scan, open a courier trace if the checks have not located the parcel\n3. Once at least 48 elapsed hours have passed, and an opened trace remains unresolved, the customer may choose one replacement or a refund\n4. Do not issue both. Refunds go to the original payment method and normally appear within 5 business days after processing\n5. The case owner must send the next update within one business day, even if there is no new result",
       "sequential": true,
       "questions": [
@@ -130,7 +130,7 @@
       "kind": "writing",
       "title": "Write a service recovery reply",
       "seconds": 180,
-      "instructions": "Write a helpful customer email in your own words. Aim for 80–130 words; there is no automatic word-count penalty.",
+      "instructions": "Write a helpful customer email in your own words. Aim for 80–130 words.",
       "context": "Customer message\nI took yesterday off work for this delivery and nobody arrived. The last agent said it was definitely coming. I can't keep taking days off. Can you get it here by 15:00 today? If not, tell me what my options actually are.\n\nCase facts and policy\nIt is Friday at 10:00. The courier confirms that yesterday's delivery was missed\nThe order has not been delivered. No same-day slot is available; delivery by 15:00 today cannot be promised\nThe next bookable slot is Monday, 09:00–12:00; the customer must confirm before it is booked\nThe customer may instead cancel the undelivered order for a full refund to the original payment method; normal posting time is 5 business days after processing\nThe $12 delivery fee can be refunded if the customer keeps the order. Cancellation already includes that fee, so do not add a second fee refund\nYou own the case. If the customer has not replied, send a follow-up by 16:00 today",
       "prompt": "Write the reply you would send now. Address the missed commitment, answer the 15:00 request, explain the available choices and make the next step clear. Include the follow-up commitment. Do not claim an action has already been completed if it still needs the customer's choice.",
       "example": "I'm sorry you lost a day waiting, especially after being told the delivery was definite. I've checked with the courier, and delivery by 15:00 today isn't available. I can book Monday between 09:00 and 12:00 if that works for you and refund the $12 delivery fee. Alternatively, you can cancel for a full refund, including delivery, to your original payment method; this normally appears within five business days after processing. Which would you prefer? I'll keep ownership of the case and follow up by 16:00 today if I haven't heard from you.",
