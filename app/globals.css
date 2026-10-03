@@ -176,7 +176,8 @@
   .request-column-editor button { width: 30px; }
 }
 
-.assess-sidebar .select-field { color: var(--foreground); }
+/* Mobile navigation is portalled outside .assess-sidebar. */
+[data-slot="sidebar-header"] .select-field { color: var(--foreground); }
 .analytics-page { min-width: 0; max-width: 1320px; margin-inline: auto; }
 .analytics-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .analytics-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 16px; margin: 18px 0 24px; }

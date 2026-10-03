@@ -22,7 +22,7 @@
     "test:supabase": "node tests/supabase-qa.mjs",
     "test:tenants": "node tests/tenants-qa.mjs",
     "test:requests": "node tests/requests-qa.mjs",
-    "test:analytics": "node tests/analytics-metrics.mjs && node tests/analytics-qa.mjs",
+    "test:analytics": "node tests/analytics-metrics.mjs && node tests/analytics-qa.mjs && node tests/analytics-navigation.mjs",
     "test:accounts": "node tests/accounts-qa.mjs",
     "dev:local": "node scripts/local-dev.mjs",
     "build:local": "node scripts/local-dev.mjs build",

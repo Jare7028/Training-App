@@ -143,3 +143,5 @@ The suite verifies Editor sharing, Viewer controls and server permissions, suspe
 ## Analytics verification
 
 `npm run test:analytics` runs deterministic aggregation assertions and authenticated local API/browser checks. Coverage includes UTC and custom date boundaries, question-weighted accuracy, snapshot changes and copied IDs, editable human rubrics, technical typing exclusions, medians, empty states, safe CSV, more than 1,000 assignments, preview exclusion, business and suspended-user isolation, keyboard chart inspection, date/assessment filters, cancelled stale responses, retry, CSV download and desktop/390px/320px accessibility/reflow. Requests reports are checked against custom columns, assignment and archive changes. Tests create only labelled local fixtures and clean the exact tracked records. Chromium viewport emulation does not establish physical Safari or mobile screen-reader support.
+
+The navigation regression also checks an authorised global owner's business picker after mobile navigation animations settle, including the portalled sidebar. It grants global access only to the known local QA account for the check and removes that grant afterward.
