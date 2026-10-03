@@ -92,3 +92,5 @@
 
 .rubric-guide p, .rubric-guide small { color: #526572; }
 @media (max-width: 767px) { .score-inline { white-space: normal; } }
+
+.submission-error{font-size:.875rem;color:#883f39;overflow-wrap:anywhere}

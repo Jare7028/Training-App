@@ -108,3 +108,10 @@ The visual audit passed 23 checks: seven workspace screens at desktop, 390px mob
 
 
 The hosted audit exposed an additional 4.31:1 contrast failure for the Not started status on a populated candidate row. Its neutral text colour is now darker, and the local workspace audit includes a tracked synthetic assignment so the populated table is exercised alongside the empty view. Cleanup preserves all pre-existing candidate records.
+
+
+## Candidate submission confirmation
+
+Shared-timer assessments now use an accessible confirmation dialog instead of a single flex row that squeezed the title and message into vertical columns on phones. Text and buttons have separate rows on small screens. Cancellation restores focus without submitting; a pending request prevents repeat activation, and a failed submission keeps the dialog open with readable error text so the candidate can retry. Successful submission moves focus to the completion heading. The candidate's final answers still go through the existing server-controlled submission and immutable-results checks.
+
+The expanded question-flow suite passed 27 local checks. It audits the open shared-timer and section-timer confirmation dialogs, plus the shared-timer failure state, at 1440px, 390px and 320px widths. Checks cover panel and text geometry, button bounds, automated WCAG rules, Cancel/Escape, a delayed failed request, repeated activation, retry, both forward-only and reviewable assessment completion, saved objective/writing results and human review. Typecheck, lint and a fresh production build passed. Browser checks use Chromium with mobile viewport emulation; physical iPhone Safari has not been tested.
