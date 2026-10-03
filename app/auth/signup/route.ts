@@ -32,8 +32,8 @@ export async function POST(request: Request) {
         } });
         if (error?.code === 'signup_disabled') return json({ error: 'Business registration is temporarily closed. Please try again later.' }, 503);
         if (error) return json({ error: error.status === 429 ? 'Please wait before trying signup again.' : 'Signup could not be completed. Please retry, or sign in if you already have an account.' }, error.status === 429 ? 429 : 400);
-        // Some local configurations confirm immediately. Production requires
-        // email verification; both paths use the same verified database RPC.
+        // When email confirmation is disabled, Supabase confirms the account
+        // and returns a session immediately. Both flows use the same tenant RPC.
         if (data.session) { await finishBusinessSignup(); return json({ ready: true }); }
         return json({ ready: false, message: 'Check your email to verify your account. If you already have an account, sign in instead.' });
     } catch (error) {
