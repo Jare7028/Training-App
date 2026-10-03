@@ -52,6 +52,19 @@ The legacy browser rerun exposed a fixture collision: repeated runs left identic
 
 After the review corrections, the production build, typecheck, lint, four recovery regressions, 25 core workflow checks, 32 core browser checks and twelve legacy/reuse browser checks passed. The scoring reference comparison also passed all 14,641 alignments. The unchanged desktop focus assertion passed; no timeouts or accessibility assertions were relaxed.
 
+
+## Customer journey audit and navigation recovery
+
+Audited from merged `main` at `90bb2c5` using only the loopback Next.js/Supabase fixtures. The existing desktop/mobile journey passed 30 browser checks, including module creation/editing, assessment building, candidate-link generation, signed-out completion, answer persistence and human-result review. The workflow suite passed 31 checks covering owner isolation, immutable assessment copies, preview separation, expiry/revocation and result/review persistence.
+
+A controlled delayed section-navigation response reproduced silent answer loss: the writing field accepted `Initial customer reply. Extra detail.` while the server had saved only `Initial customer reply.`. When navigation finished, the extra text disappeared. The regression failed against the unchanged `90bb2c5` application; its output is retained locally under ignored `test-results/reliability/navigation-before-fix.log`.
+
+Flexible assessment questions and writing are now temporarily locked only while changing sections. Regular autosave still permits editing. Both successful and failed navigation release the lock. Two added browser regressions check accepted writing against persisted answers during delayed navigation, editing after returning, disabled choices during an outstanding request, and editing/saving/retrying after a rejected navigation. The six recovery checks pass against the production build with local Supabase; their exact synthetic records are removed after the run.
+
+After the fix, the production build, lint and typecheck passed, followed by all six recovery checks, 32 core browser checks and twelve legacy/reused typing checks. The browser suites include automated WCAG audits, viewport overflow checks, real typing input and persisted human-review evidence.
+
+This audit does not establish real email delivery, authenticated production access, assistive-technology usability with a human screen-reader user, or behavior on physical mobile devices. Browser mobile coverage uses Chromium viewport emulation. No real candidate records, production authentication settings, scoring rules or external invitations were changed.
+
 ## Editable assessment rules and reduced copy
 
 Removed the ten-minute validation limit and editor readiness block. Timing mode, work/section budgets, typing duration, exact-passage early completion, paste permission and candidate link expiry are assessor settings stored with reusable modules or assessment configuration. Candidate policy, spelling tools and data-use notice can be edited or left blank in either timer mode. The supplied core keeps its existing defaults. Existing assignments and completed results retain their saved content.
@@ -61,5 +74,16 @@ Workspace footers, repeated instructional paragraphs and field explanations were
 The release passed typecheck, lint and a fresh production build; 71 API regression checks, 25 core workflow checks, 32 desktop/mobile core browser checks and twelve legacy/module-reuse browser checks. The independent typing oracle passed all 14,641 alignments. Four connection-recovery regressions and fourteen new test:settings checks also passed. Settings coverage exercises the real module editor, a twenty-minute assessment, saved link expiry, signed-out custom-duration typing, enabled paste, disabled early finish enforced by the server, sequential timing, actual-duration results and preserved assignment snapshots. Desktop and mobile settings include automated WCAG audits.
 
 Legacy default section-timer answer payloads remain compatible. Custom/measured typing records server timing metadata. The new sequential test waits for the active input before reading its deadline; it does not assume a button click has already committed the start request. Paste-rejection checks retain the same input/focus assertions using the shortened user-facing message.
+
+
+## PR #3: both candidate timer modes
+
+The reliability fix now covers flexible section navigation, legacy Save & continue/final submission, and early typing completion in both modes. Text remains selectable while read-only; choices are disabled only during a transition that will replace or lock the answer. Normal autosave stays editable. Failure releases the lock, and the existing request guard prevents duplicate transitions. The legacy Saved status now distinguishes a newer unsaved edit from the snapshot just acknowledged.
+
+The legacy clock now uses a monotonic elapsed-time estimate. Before the fix, a delayed autosave response moved a displayed countdown from 281 to 284 seconds. Server deadlines, grace periods and scoring remain unchanged. The legacy answer-loss and timer regressions failed against `18863fd` (whose legacy component matches the original `90bb2c5` parent). Early-finish fault injection also reproduced accepted keystrokes disappearing in both typing modes before the shared typing input lock was added.
+
+`test:reliability` runs eleven local fault-injection cases. These include keyboard selection and Tab navigation, disabled-radio tab order, arrow/Space recovery after a failed request, repeated activation, persisted writing/choices/typing, and both visible and server timers. Paused and error states receive automated WCAG checks. Exact-ID fixture cleanup is restricted to generated loopback Supabase configuration.
+
+Concurrent main commit `e6cfed2` was merged into this branch before final validation. Its editable rules, server behavior, shortened copy and new settings tests are preserved. PR changes relative to that main commit are confined to candidate transition/clock handling, the shared typing input lock, reliability tests and this evidence. No authentication, scorer or production-data changes are included.
 
 The production origin passed 50 live checks for the configured rules and complete desktop/mobile core journey, including separate protected previews, duplicate submissions and saved human reviews. Only directly tracked synthetic records were removed. A final follow-up makes sequential typing’s displayed section duration, overall deadline and review time budget use the configured measurement window rather than the shared-mode preparation budget; the settings regression asserts all three clocks agree.

@@ -20,6 +20,7 @@ export default function FlexibleCandidate({ token, initial }: { token: string; i
     const [answer, setAnswer] = useState<Answer>(initial.answer || {});
     const [ready, setReady] = useState(false);
     const [busy, setBusy] = useState(false);
+    const [transitioning, setTransitioning] = useState(false);
     const [error, setError] = useState('');
     const [saved, setSaved] = useState('Saved');
     const [review, setReview] = useState(false);
@@ -41,6 +42,8 @@ export default function FlexibleCandidate({ token, initial }: { token: string; i
     const send = useCallback(async (action: string, index?: number) => {
         if (flight.current) return false;
         flight.current = true; setBusy(true);
+        // Transitions save one snapshot before switching sections or locking answers.
+        setTransitioning(action === 'navigate' || action === 'submit' || action === 'typing-finish');
         const outgoing = structuredClone(input.current), previous = state.current;
         try {
             const response = await fetch('/api/candidate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, action, index, revision: previous.revision, answer: outgoing }) });
@@ -60,7 +63,7 @@ export default function FlexibleCandidate({ token, initial }: { token: string; i
             setError(''); setSaved(dirty.current ? 'Unsaved changes' : 'Saved');
             return true;
         } catch (e) { setError((e as Error).message); setSaved('Not saved'); return false; }
-        finally { flight.current = false; setBusy(false); }
+        finally { flight.current = false; setBusy(false); setTransitioning(false); }
     }, [token, accept]);
     useEffect(() => { const interval = setInterval(() => { if (dirty.current && state.current.status === 'in-progress') void send('save'); }, 1500); return () => clearInterval(interval); }, [send]);
     const section = session.modules?.[session.currentIndex];
@@ -98,9 +101,9 @@ export default function FlexibleCandidate({ token, initial }: { token: string; i
             {review ? <><h1>Review your answers</h1>{session.modules?.map((m,i)=><section className="question-evidence" key={m.id}><h2>{m.title}</h2>{m.questions?.map(q=><p key={q.id}>{q.prompt}<br/><strong>{answers[m.id]?.choices?.[q.id]===undefined?'Unanswered':q.options[answers[m.id].choices![q.id]]}</strong></p>)}{m.kind==='writing'&&<p>{answers[m.id]?.text||'No written reply yet.'}</p>}{m.kind==='typing'&&<p>{answers[m.id]?.typing?.complete?'Typing sample saved and locked':answers[m.id]?.typing?'Typing incomplete — technical review':'Typing not attempted'}</p>}<Button variant="outline" disabled={busy} onClick={()=>void send('navigate',i).then(ok=>{if(ok)setReview(false);})}>Review section {i+1}</Button></section>)}<Button disabled={busy} onClick={()=>setConfirm(true)}>Submit assessment</Button></> : <>
                 <div className="test-section-heading"><div><small>SECTION {session.currentIndex+1} OF {session.sections.length}</small><h1>{section?.title}</h1></div><span>{section?.kind==='typing'&&typing&&!typing.complete?`${formatTime(typingLeft)} typing`:formatTime(totalLeft)+' work left'}</span></div><p>{section?.instructions}</p>
                 {section?.context && <pre className="policy-card">{section.context}</pre>}
-                {section?.questions?.map((q,i)=> (!section.sequential || i===0 || answer.choices?.[section.questions![i-1].id]!==undefined) && <fieldset className="candidate-question" key={q.id}><legend>{i+1}. {q.prompt}</legend>{q.context&&<pre className="policy-card">{q.context}</pre>}<RadioGroup aria-label={q.prompt} value={answer.choices?.[q.id]===undefined?'':String(answer.choices[q.id])} onValueChange={v=>change({...input.current,choices:{...input.current.choices,[q.id]:Number(v)}})}>{q.options.map((o,n)=><label className={`candidate-option ${answer.choices?.[q.id]===n?'chosen':''}`} key={q.optionIds?.[n]||n}><RadioGroupItem value={String(n)} id={`${q.id}-${n}`}/><span>{o}</span></label>)}</RadioGroup></fieldset>)}
+                {section?.questions?.map((q,i)=> (!section.sequential || i===0 || answer.choices?.[section.questions![i-1].id]!==undefined) && <fieldset className="candidate-question" key={q.id}><legend>{i+1}. {q.prompt}</legend>{q.context&&<pre className="policy-card">{q.context}</pre>}<RadioGroup disabled={transitioning} aria-label={q.prompt} value={answer.choices?.[q.id]===undefined?'':String(answer.choices[q.id])} onValueChange={v=>change({...input.current,choices:{...input.current.choices,[q.id]:Number(v)}})}>{q.options.map((o,n)=><label className={`candidate-option ${answer.choices?.[q.id]===n?'chosen':''}`} key={q.optionIds?.[n]||n}><RadioGroupItem value={String(n)} id={`${q.id}-${n}`}/><span>{o}</span></label>)}</RadioGroup></fieldset>)}
                 {section?.kind==='typing'&&<div className="typing-task">
-                    <TypingTest key={section.id} passage={section.passage||''} value={answer.text||''} onChange={text=>change({...input.current,text})} inputRef={typingInput} mode={!typing?'ready':typing.complete?'complete':'active'} seconds={typingWindow} remaining={typing?typingLeft:typingWindow} allowPaste={section.allowPaste} legacy={section.typingMode!=='prefix-v1'} elapsed={typing?.seconds ?? (typing ? Math.max(0,(now-typing.startedAt)/1000) : 0)}/>
+                    <TypingTest readOnly={transitioning} key={section.id} passage={section.passage||''} value={answer.text||''} onChange={text=>change({...input.current,text})} inputRef={typingInput} mode={!typing?'ready':typing.complete?'complete':'active'} seconds={typingWindow} remaining={typing?typingLeft:typingWindow} allowPaste={section.allowPaste} legacy={section.typingMode!=='prefix-v1'} elapsed={typing?.seconds ?? (typing ? Math.max(0,(now-typing.startedAt)/1000) : 0)}/>
                     {!typing?<>
                         {section.practice&&<TypingPractice key={section.id} passage={section.practice}/>}
 
@@ -111,7 +114,7 @@ export default function FlexibleCandidate({ token, initial }: { token: string; i
                         {!typing.complete&&canFinishTypingEarly(section)&&<Button disabled={busy || (answer.text||'').normalize('NFC')!==(section.passage||'').normalize('NFC')} onClick={()=>void send('typing-finish')}>Finish complete passage early</Button>}
                     </>}
                 </div>}
-                {section?.kind==='writing'&&<div className="writing-task"><h2>{section.prompt}</h2><label className="field"><span>Your reply to the customer</span><Textarea aria-label="Your reply to the customer" value={answer.text||''} maxLength={5000} rows={10} spellCheck={session.config.spellCheck} onChange={e=>change({text:e.target.value})}/></label><p>{words(answer.text||'')} words</p></div>}
+                {section?.kind==='writing'&&<div className="writing-task"><h2>{section.prompt}</h2><label className="field"><span>Your reply to the customer</span><Textarea readOnly={transitioning} aria-label="Your reply to the customer" value={answer.text||''} maxLength={5000} rows={10} spellCheck={session.config.spellCheck} onChange={e=>change({text:e.target.value})}/></label><p>{words(answer.text||'')} words</p></div>}
                 <div className="test-actions"><span className="save-status" role="status" aria-live="polite">{busy?'Saving…':saved}</span><Button disabled={busy || measured} onClick={()=>session.currentIndex < session.sections.length-1 ? void send('navigate',session.currentIndex+1) : void send('save').then(ok=>{if(ok)setReview(true);})}>{session.currentIndex < session.sections.length-1?'Save & continue':'Review answers'}</Button></div>
             </>}
             {confirm&&<section className="mini-notice"><h2>Submit your assessment?</h2><p>Your saved answers will be locked for human review.</p><Button disabled={busy} onClick={()=>void send('submit')}>Confirm submission</Button><Button variant="outline" disabled={busy} onClick={()=>setConfirm(false)}>Keep reviewing</Button></section>}
