@@ -125,7 +125,7 @@ export const rubric = [
     { id: 'ownership', title: 'Ownership & next step', help: 'Explains what happens next, by whom and when', anchors: ['No useful next step', 'Useful action, but ownership or timing is vague', 'Clear action, owner and realistic follow-up timing'] },
 ];
 export const duration = (mods: TestModule[]) => mods.reduce((n, m) => n + m.seconds, 0);
-export const workDuration = (a: Assessment) => a.config?.flexible ? a.config.workSeconds : duration(a.modules);
+export const workDuration = (a: Pick<Assessment, 'modules' | 'config'>) => a.config?.flexible ? a.config.workSeconds : a.modules.reduce((n,m)=>n+sectionDuration(m),0);
 export const typingSeconds = (m: TestModule): number => m.typingSeconds ?? (m.typingMode === 'prefix-v1' ? 60 : m.seconds);
 export const canFinishTypingEarly = (m: TestModule) => m.finishTypingEarly ?? m.typingMode === 'prefix-v1';
 export const sectionDuration = (m: TestModule) => m.kind === 'typing' ? typingSeconds(m) : m.seconds;
