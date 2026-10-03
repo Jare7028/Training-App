@@ -144,7 +144,7 @@ export default function Candidate({ token, embedded = false }: {
     const m = session?.module;
     const nextQuestion = !!session?.config?.oneQuestionAtATime && (m?.questionIndex||0)+1 < (m?.questionCount||0);
     const activeQuestionId = m?.questions?.[0]?.id;
-    useEffect(()=>{if(session?.config?.oneQuestionAtATime)questionRef.current?.focus();},[activeQuestionId,session?.config?.oneQuestionAtATime]);
+    useEffect(()=>{if(session?.config?.oneQuestionAtATime){ const question=questionRef.current; question?.focus({preventScroll:true}); question?.querySelector('legend')?.scrollIntoView({block:'start',behavior:'instant'}); }},[activeQuestionId,session?.config?.oneQuestionAtATime]);
     const completed = session?.status === 'completed';
     if (session?.config?.flexible) return <FlexibleCandidate token={token} embedded={embedded} initial={session as unknown as FlexibleSession}/>;
     return <div className={`candidate-app${session?.config?.allowBackNavigation === false ? ' forward-only' : ''}`}><header className="candidate-header"><div className="brand" aria-label="Resolvable assessment"><span className="brand-symbol">r</span><strong>resolvable</strong></div>{session?.preview && !embedded && <span className="private-pill">Test preview</span>}</header><main className="candidate-main">

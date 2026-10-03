@@ -72,7 +72,7 @@ export default function FlexibleCandidate({ token, initial, embedded = false }: 
     const noBack = session.config.allowBackNavigation === false;
     const nextQuestion = !!session.config.oneQuestionAtATime && (section?.questionIndex || 0) + 1 < (section?.questionCount || 0);
     const activeQuestionId = section?.questions?.[0]?.id;
-    useEffect(()=>{if(session.config.oneQuestionAtATime)questionRef.current?.focus();},[activeQuestionId,session.config.oneQuestionAtATime]);
+    useEffect(()=>{if(session.config.oneQuestionAtATime){ const question=questionRef.current; question?.focus({preventScroll:true}); question?.querySelector('legend')?.scrollIntoView({block:'start',behavior:'instant'}); }},[activeQuestionId,session.config.oneQuestionAtATime]);
     const typing = answer.typing;
     const typingStartedAt = typing?.startedAt, typingComplete = typing?.complete;
     useEffect(() => {
