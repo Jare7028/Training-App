@@ -9,10 +9,10 @@ import styles from './typing-test.module.css';
 type Props = {
     passage: string; value: string; onChange: (text: string) => void;
     mode: 'ready' | 'active' | 'complete'; seconds: number; remaining: number; elapsed: number;
-    inputRef?: Ref<HTMLTextAreaElement>; label?: string; practice?: boolean; legacy?: boolean;
+    inputRef?: Ref<HTMLTextAreaElement>; label?: string; practice?: boolean; legacy?: boolean; allowPaste?: boolean;
 };
 
-export default function TypingTest({ passage, value, onChange, mode, seconds, remaining, elapsed, inputRef, label = 'Your typed copy', practice = false, legacy = false }: Props) {
+export default function TypingTest({ passage, value, onChange, mode, seconds, remaining, elapsed, inputRef, label = 'Your typed copy', practice = false, legacy = false, allowPaste = false }: Props) {
     const id = useId(), viewport = useRef<HTMLDivElement>(null), active = useRef<HTMLSpanElement>(null);
     const ownInput = useRef<HTMLTextAreaElement>(null);
     useImperativeHandle(inputRef, () => ownInput.current!);
@@ -51,8 +51,8 @@ export default function TypingTest({ passage, value, onChange, mode, seconds, re
             </div>
         </div>
         <div className={styles.legend} aria-hidden="true"><span><i className={styles.correctDot}/> Correct</span><span><i className={styles.errorDot}/> Incorrect · underline</span><span><i className={styles.cursorDot}/> Current position</span></div>
-        {mode !== 'ready' && <><label className={styles.inputLabel} htmlFor={id}>{label}<span>{mode === 'complete' ? 'Saved sample' : focused ? 'Keep typing · backspace to correct' : 'Click here to type'}</span></label><Textarea id={id} aria-label={label} ref={ownInput} aria-describedby={id+'-help'} className={styles.input} rows={3} value={value} readOnly={mode === 'complete' || (!practice && remaining <= 0)} maxLength={5000} spellCheck={false} autoCorrect="off" autoComplete="off" autoCapitalize="off" placeholder="Type the reference passage here…" onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)} onSelect={e=>setSelection(e.currentTarget.selectionStart)} onPaste={e=>{e.preventDefault();setNotice('Please type the passage. Pasting is disabled for this sample.');}} onDrop={e=>{e.preventDefault();setNotice('Please type the passage. Dropping text is disabled for this sample.');}} onChange={e=>{if (mode !== 'active' || (!practice && remaining <= 0)) return;setSelection(e.target.selectionStart);onChange(e.target.value);setNotice('');}}/>
-        <p id={id+'-help'} className={styles.help}>{mode === 'complete' ? <><Check size={14}/> {practice ? 'Practice complete.' : 'Typing saved and locked.'} {!practice && value && `Correct-character speed: ${speed(metrics.netWpm)} WPM · ${Math.min(seconds, elapsed).toFixed(1)} seconds measured.`}</> : 'Case, punctuation and spaces count. Correct mistakes with backspace; the timer keeps running.'}</p><p className={styles.notice} role="status">{notice}</p></>}
+        {mode !== 'ready' && <><label className={styles.inputLabel} htmlFor={id}>{label}<span>{mode === 'complete' ? 'Saved sample' : focused ? 'Keep typing · backspace to correct' : 'Click here to type'}</span></label><Textarea id={id} aria-label={label} ref={ownInput} aria-describedby={id+'-help'} className={styles.input} rows={3} value={value} readOnly={mode === 'complete' || (!practice && remaining <= 0)} maxLength={5000} spellCheck={false} autoCorrect="off" autoComplete="off" autoCapitalize="off" placeholder="Type the reference passage here…" onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)} onSelect={e=>setSelection(e.currentTarget.selectionStart)} onPaste={e=>{if(!allowPaste){e.preventDefault();setNotice('Pasting is disabled.');}}} onDrop={e=>{if(!allowPaste){e.preventDefault();setNotice('Dropping text is disabled.');}}} onChange={e=>{if (mode !== 'active' || (!practice && remaining <= 0)) return;setSelection(e.target.selectionStart);onChange(e.target.value);setNotice('');}}/>
+        <p id={id+'-help'} className={styles.help}>{mode === 'complete' ? <><Check size={14}/> {practice ? 'Practice complete.' : 'Typing saved and locked.'}</> : 'Backspace to correct.'}</p><p className={styles.notice} role="status">{notice}</p></>}
     </div>;
 }
 

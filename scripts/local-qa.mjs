@@ -34,14 +34,14 @@ if (process.argv[2] === 'setup') {
     for (const owner of owners) {
         const { data, error } = await admin.from('assessments').select('id,title').eq('owner', owner);
         if (error) throw new Error('Unable to inspect local QA records.');
-        const ids = data.filter(r => /^(QA|WORKFLOW|BROWSER) SYNTHETIC\b/.test(r.title)).map(r => r.id);
+        const ids = data.filter(r => /^(QA|WORKFLOW|BROWSER|SETTINGS) SYNTHETIC\b/.test(r.title)).map(r => r.id);
         if (ids.length) for (const table of ['attempts', 'preview_attempts', 'assessments']) {
             const { error } = await admin.from(table).delete().eq('owner',owner).in(table === 'assessments' ? 'id' : 'assessment_id',ids);
             if (error) throw new Error('Unable to remove local QA records.');
         }
         const { data: modules, error: moduleError } = await admin.from('modules').select('id,content').eq('owner',owner);
         if (moduleError) throw new Error('Unable to inspect local QA modules.');
-        const moduleIds = modules.filter(r => /^(QA|WORKFLOW|BROWSER) SYNTHETIC\b/.test(r.content.title)).map(r=>r.id);
+        const moduleIds = modules.filter(r => /^(QA|WORKFLOW|BROWSER|SETTINGS) SYNTHETIC\b/.test(r.content.title)).map(r=>r.id);
         if (moduleIds.length) {
             const { error } = await admin.from('modules').delete().eq('owner',owner).in('id',moduleIds);
             if (error) throw new Error('Unable to remove local QA modules.');

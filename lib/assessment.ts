@@ -10,7 +10,7 @@ export type Question = {
     correctOptionId?: string;
 };
 export type Criterion = { id: string; title: string; help: string; anchors: string[]; max: number };
-export type AssessmentConfig = { stage?: 'pilot' | 'approved'; adjustmentSeconds?: number; flexible: boolean; workSeconds: number; introductionSeconds: number; code: string; supportEmail: string; toolPolicy: string; spellCheck: boolean; notice: string };
+export type AssessmentConfig = { stage?: 'pilot' | 'approved'; linkExpiryDays?: number; adjustmentSeconds?: number; flexible: boolean; workSeconds: number; introductionSeconds: number; code: string; supportEmail: string; toolPolicy: string; spellCheck: boolean; notice: string };
 export type TestModule = {
     id: string;
     kind: ModuleKind;
@@ -26,6 +26,9 @@ export type TestModule = {
     version?: number;
     practice?: string;
     typingMode?: 'prefix-v1';
+    typingSeconds?: number;
+    finishTypingEarly?: boolean;
+    allowPaste?: boolean;
     rubric?: Criterion[];
     example?: string;
     sequential?: boolean;
@@ -123,14 +126,16 @@ export const rubric = [
 ];
 export const duration = (mods: TestModule[]) => mods.reduce((n, m) => n + m.seconds, 0);
 export const workDuration = (a: Assessment) => a.config?.flexible ? a.config.workSeconds : duration(a.modules);
-export const typingSeconds = (m: TestModule) => m.typingMode === 'prefix-v1' ? 60 : m.seconds;
+export const typingSeconds = (m: TestModule): number => m.typingSeconds ?? (m.typingMode === 'prefix-v1' ? 60 : m.seconds);
+export const canFinishTypingEarly = (m: TestModule) => m.finishTypingEarly ?? m.typingMode === 'prefix-v1';
+export const sectionDuration = (m: TestModule) => m.kind === 'typing' ? typingSeconds(m) : m.seconds;
 export function withTypingAdministration(a: Assessment): Assessment {
-    if (a.config?.flexible || !a.modules.some(m => m.kind === 'typing' && m.typingMode === 'prefix-v1')) return a;
-    const workSeconds = Math.max(90, duration(a.modules));
-    return { ...a, config: a.config ? { ...a.config, flexible:true, workSeconds:Math.max(90,a.config.workSeconds) } : {
-        flexible:true, workSeconds, introductionSeconds:Math.min(60, Math.max(0,600-workSeconds)), code:'Custom assessment', supportEmail:'', spellCheck:true,
-        toolPolicy:'Use your own reasoning and writing, without AI or help from other people. Ordinary spelling tools and agreed assistive technology are allowed.',
-        notice:'Your responses are saved for the hiring team to review. Ask the person who sent this link about data retention or deletion.',
+    if (a.config || !a.modules.some(m => m.kind === 'typing' && m.typingMode === 'prefix-v1')) return a;
+    const workSeconds = Math.max(90, duration(a.modules), ...a.modules.filter(m=>m.kind==='typing').map(typingSeconds));
+    return { ...a, config: {
+        flexible:true, workSeconds, introductionSeconds:0, code:'', supportEmail:'', spellCheck:true,
+        toolPolicy:'',
+        notice:'',
     } };
 }
 export function reviewCriteria(modules: TestModule[]) { return modules.filter(m => m.kind === 'writing').flatMap(m => m.rubric ? m.rubric.map(r => ({ ...r, key: `${m.id}:${r.id}`, moduleTitle: m.title })) : rubric.map(r => ({ ...r, max: 4, key: r.id, moduleTitle: m.title }))); }
@@ -151,14 +156,13 @@ export function validateAssessment(a: Assessment, publishing = false): string | 
         return 'Invalid module.';
     if (new Set(a.modules.map(m => m.id)).size !== a.modules.length)
         return 'Module IDs must be unique.';
-    if (duration(a.modules) > 600)
-        return 'The assessment must take no more than 10 minutes.';
-    if (a.config && (!Number.isInteger(a.config.workSeconds) || a.config.workSeconds < 15 || a.config.workSeconds > 600 || !Number.isInteger(a.config.introductionSeconds) || a.config.introductionSeconds < 0 || a.config.introductionSeconds > 300 || typeof a.config.flexible !== 'boolean' || typeof a.config.spellCheck !== 'boolean' || ['code','supportEmail','toolPolicy','notice'].some(k => typeof a.config![k as keyof AssessmentConfig] !== 'string' || String(a.config![k as keyof AssessmentConfig]).length > 3000) || (a.config.supportEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a.config.supportEmail)))) return 'Check the work timer, introduction and administration settings.';
+    if (a.config?.linkExpiryDays !== undefined && (!Number.isInteger(a.config.linkExpiryDays) || a.config.linkExpiryDays < 1 || a.config.linkExpiryDays > 365)) return 'Link expiry must be 1–365 days.';
+    if (a.config && (!Number.isInteger(a.config.workSeconds) || a.config.workSeconds < 15 || a.config.workSeconds > 86400 || !Number.isInteger(a.config.introductionSeconds) || a.config.introductionSeconds < 0 || a.config.introductionSeconds > 86400 || typeof a.config.flexible !== 'boolean' || typeof a.config.spellCheck !== 'boolean' || ['code','supportEmail','toolPolicy','notice'].some(k => typeof a.config![k as keyof AssessmentConfig] !== 'string' || String(a.config![k as keyof AssessmentConfig]).length > 3000) || (a.config.supportEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a.config.supportEmail)))) return 'Check the work timer, introduction and administration settings.';
     for (const m of a.modules) {
         if (typeof m.id !== 'string' || ['constructor', 'prototype', '__proto__'].includes(m.id) || !/^[a-zA-Z0-9-]{1,60}$/.test(m.id) || !Object.keys(kindLabels).includes(m.kind))
             return 'Invalid module.';
-        if (typeof m.title !== 'string' || !m.title.trim() || m.title.length > 120 || !Number.isInteger(m.seconds) || m.seconds < 15 || m.seconds > 600)
-            return 'Each module needs a title and a time limit of 15–600 seconds.';
+        if (typeof m.title !== 'string' || !m.title.trim() || m.title.length > 120 || !Number.isInteger(m.seconds) || m.seconds < 15 || m.seconds > 86400)
+            return 'Each module needs a title and a time limit of 15–86,400 seconds.';
         if (typeof m.instructions !== 'string' || m.instructions.length > 2000 || (m.context !== undefined && (typeof m.context !== 'string' || m.context.length > 8000)))
             return 'Module instructions or context are too long.';
         if ((m.sequential !== undefined && typeof m.sequential !== 'boolean') || (m.code !== undefined && (typeof m.code !== 'string' || m.code.length > 80)) || (m.version !== undefined && (!Number.isInteger(m.version) || m.version < 1)) || (m.practice !== undefined && (typeof m.practice !== 'string' || m.practice.length > 2000)) || (m.typingMode !== undefined && m.typingMode !== 'prefix-v1') || (m.example !== undefined && (typeof m.example !== 'string' || m.example.length > 5000))) return 'Invalid module metadata.';
@@ -166,6 +170,8 @@ export function validateAssessment(a: Assessment, publishing = false): string | 
         if ((m.kind === 'typing' || m.kind === 'writing') && m.questions !== undefined)
             return 'Typing and writing modules cannot contain objective questions.';
         if (m.kind === 'typing') {
+            if ((m.typingSeconds !== undefined && (!Number.isInteger(m.typingSeconds) || m.typingSeconds < 15 || m.typingSeconds > 86400)) || (m.finishTypingEarly !== undefined && typeof m.finishTypingEarly !== 'boolean') || (m.allowPaste !== undefined && typeof m.allowPaste !== 'boolean')) return 'Check the typing duration and options.';
+            if (a.config?.flexible === false && typingSeconds(m) > m.seconds) return 'The typing duration must fit within its section time limit.';
             if (typeof m.passage !== 'string' || m.passage.length < 100 || m.passage.length > 5000 || ((m.typingMode !== 'prefix-v1' || m.targetWpm !== undefined) && (!Number.isFinite(m.targetWpm) || m.targetWpm! < 1 || m.targetWpm! > 200)))
                 return 'Typing needs a 100–5,000 character passage; legacy scoring also needs a target of 1–200 WPM.';
         }
@@ -206,7 +212,7 @@ export function typingScore(text: string, passage: string, seconds: number, targ
 export function scoreAttempt(modules: TestModule[], answers: Record<string, Answer>, completedAt: number, timedOut = false): Result {
     const scores: ModuleScore[] = modules.map(m => {
         const a = answers[m.id] || {};
-        const sampleSeconds = a.typing?.seconds ?? (m.typingMode === 'prefix-v1' && (a.typing || !a.text) ? 60 : m.seconds);
+        const sampleSeconds = a.typing?.seconds ?? (m.kind === 'typing' ? typingSeconds(m) : m.seconds);
         if (m.kind === 'writing')
             return { id: m.id, title: m.title, kind: m.kind, score: null };
         if (m.kind === 'typing')
@@ -218,8 +224,8 @@ export function scoreAttempt(modules: TestModule[], answers: Record<string, Answ
     const objective = scores.filter(s => s.score !== null);
     return { objective: objective.length ? Math.round(objective.reduce((n, s) => n + (s.score || 0), 0) / objective.length) : null, objectiveCorrect: scores.reduce((n,s) => n+(s.correct||0),0), objectiveTotal: scores.reduce((n,s) => n+(s.total||0),0), decisions: modules.some(m => !!m.code || m.typingMode === 'prefix-v1'), modules: scores, writingWords: modules.filter(m => m.kind === 'writing').reduce((n, m) => n + words(answers[m.id]?.text || ''), 0), completedAt, timedOut };
 }
-export function cleanModule(m: TestModule): TestModule { return { id: m.id, kind: m.kind, title: m.title, seconds: m.seconds, instructions: m.instructions, code: m.code, version: m.version, sequential: m.sequential, ...(m.context !== undefined ? { context: m.context } : {}), ...(m.questions ? { questions: m.questions.map(q => ({ id: q.id, prompt: q.prompt, context: q.context, options: q.options, optionIds: q.optionIds, correctOptionId: q.correctOptionId, correct: q.correctOptionId && q.optionIds ? q.optionIds.indexOf(q.correctOptionId) : q.correct, explanation: q.explanation })) } : {}), ...(m.kind === 'typing' ? { passage: m.passage, targetWpm: m.targetWpm, practice: m.practice, typingMode: m.typingMode } : {}), ...(m.kind === 'writing' ? { prompt: m.prompt, rubric: m.rubric, example: m.example } : {}) }; }
-export function candidateModule(m: TestModule) { return { id: m.id, kind: m.kind, title: m.title, seconds: m.seconds, instructions: m.instructions, context: m.context, prompt: m.kind === 'writing' ? m.prompt : undefined, passage: m.kind === 'typing' ? m.passage : undefined, practice: m.kind === 'typing' ? m.practice : undefined, sequential: m.sequential, typingMode: m.typingMode, questions: m.questions?.map(q => ({ id: q.id, prompt: q.prompt, context: q.context, options: q.options, optionIds: q.optionIds })) }; }
+export function cleanModule(m: TestModule): TestModule { return { id: m.id, kind: m.kind, title: m.title, seconds: m.seconds, instructions: m.instructions, code: m.code, version: m.version, sequential: m.sequential, ...(m.context !== undefined ? { context: m.context } : {}), ...(m.questions ? { questions: m.questions.map(q => ({ id: q.id, prompt: q.prompt, context: q.context, options: q.options, optionIds: q.optionIds, correctOptionId: q.correctOptionId, correct: q.correctOptionId && q.optionIds ? q.optionIds.indexOf(q.correctOptionId) : q.correct, explanation: q.explanation })) } : {}), ...(m.kind === 'typing' ? { passage: m.passage, targetWpm: m.targetWpm, practice: m.practice, typingMode: m.typingMode, typingSeconds: m.typingSeconds, finishTypingEarly: m.finishTypingEarly, allowPaste: m.allowPaste } : {}), ...(m.kind === 'writing' ? { prompt: m.prompt, rubric: m.rubric, example: m.example } : {}) }; }
+export function candidateModule(m: TestModule) { return { id: m.id, kind: m.kind, title: m.title, seconds: m.seconds, instructions: m.instructions, context: m.context, prompt: m.kind === 'writing' ? m.prompt : undefined, passage: m.kind === 'typing' ? m.passage : undefined, practice: m.kind === 'typing' ? m.practice : undefined, sequential: m.sequential, typingMode: m.typingMode, typingSeconds: m.typingSeconds, finishTypingEarly: m.finishTypingEarly, allowPaste: m.allowPaste, questions: m.questions?.map(q => ({ id: q.id, prompt: q.prompt, context: q.context, options: q.options, optionIds: q.optionIds })) }; }
 
 // CS-TYPE-1.0: best reference prefix, longest prefix on ties, Unicode code
 // points after NFC. Backtrack ties: match, substitution, deletion, insertion.
