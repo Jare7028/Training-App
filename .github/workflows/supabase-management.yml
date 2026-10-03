@@ -1,0 +1,78 @@
+name: Supabase management
+
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/supabase-management.yml]
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Supabase operation
+        type: choice
+        options: [verify, enable_signup]
+        default: verify
+
+permissions: {}
+
+concurrency:
+  group: supabase-management
+  cancel-in-progress: false
+
+jobs:
+  manage:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      OPERATION: ${{ inputs.operation || 'verify' }}
+    steps:
+      - name: Manage hosted Auth settings
+        shell: python
+        run: |
+          import json, os, sys, urllib.request, urllib.error
+
+          token = os.environ.get('SUPABASE_ACCESS_TOKEN', '').strip()
+          if not token:
+              sys.exit('SUPABASE_ACCESS_TOKEN is missing from repository secrets.')
+          endpoint = 'https://api.supabase.com/v1/projects/nzoumetzzfvxavxdmjis/config/auth'
+
+          def request(method='GET', payload=None):
+              body = json.dumps(payload).encode() if payload is not None else None
+              req = urllib.request.Request(endpoint, data=body, method=method, headers={
+                  'Authorization': 'Bearer ' + token,
+                  'Content-Type': 'application/json',
+              })
+              try:
+                  with urllib.request.urlopen(req, timeout=45) as response:
+                      return json.load(response)
+              except urllib.error.HTTPError as error:
+                  # Never log configuration responses: they can contain credentials.
+                  sys.exit('Supabase management request failed: HTTP ' + str(error.code))
+              except urllib.error.URLError:
+                  sys.exit('Supabase management could not be reached.')
+
+          config = request()
+          print('Supabase management access verified.')
+          smtp_configured = bool(config.get('smtp_host') and config.get('smtp_admin_email'))
+          operation = os.environ['OPERATION']
+          if operation == 'enable_signup':
+              if not smtp_configured:
+                  sys.exit('Configure custom SMTP before enabling business registration.')
+              request('PATCH', {
+                  'disable_signup': False,
+                  'external_email_enabled': True,
+                  'mailer_autoconfirm': False,
+              })
+              config = request()
+              if config.get('disable_signup') is not False or config.get('mailer_autoconfirm') is not False:
+                  sys.exit('Supabase signup configuration verification failed.')
+          elif operation != 'verify':
+              sys.exit('Unknown operation.')
+
+          print(json.dumps({
+              'signup_enabled': config.get('disable_signup') is False,
+              'email_confirmation_required': config.get('mailer_autoconfirm') is False,
+              'email_provider_enabled': config.get('external_email_enabled') is True,
+              'custom_smtp_configured': smtp_configured,
+          }))
