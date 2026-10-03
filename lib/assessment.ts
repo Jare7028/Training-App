@@ -1,4 +1,4 @@
-export type ModuleKind = 'spelling' | 'grammar' | 'typing' | 'problem' | 'writing';
+export type ModuleKind = 'spelling' | 'grammar' | 'typing' | 'problem' | 'writing' | 'questions';
 export type Question = {
     id: string;
     prompt: string;
@@ -37,6 +37,19 @@ export type TestModule = {
 };
 export type SavedModule = { id: string; module: TestModule; revision: number; updatedAt: number };
 export function copyModule(m: TestModule): TestModule { return { ...structuredClone(m), id: crypto.randomUUID(), ...(m.questions ? { questions: m.questions.map(q => ({ ...q, options: [...q.options], id: crypto.randomUUID() })) } : {}) }; }
+export const customModuleKinds = ['questions', 'typing', 'writing'] as const;
+export function blankQuestion(): Question {
+    return { id: crypto.randomUUID(), prompt: '', options: ['', ''], correct: 0, explanation: '' };
+}
+export function blankCriterion(): Criterion {
+    return { id: crypto.randomUUID(), title: '', help: '', max: 3, anchors: ['', '', '', ''] };
+}
+export function blankModule(kind: ModuleKind): TestModule {
+    const base = { id: crypto.randomUUID(), kind, title: '', seconds: 60, instructions: '' };
+    if (kind === 'typing') return { ...base, passage: '', practice: '', typingMode: 'prefix-v1', typingSeconds: 60, finishTypingEarly: true, allowPaste: false };
+    if (kind === 'writing') return { ...base, seconds: 180, context: '', prompt: '', rubric: [blankCriterion()], example: '' };
+    return { ...base, context: '', questions: [blankQuestion()], sequential: false };
+}
 export type Assessment = {
     id: string;
     title: string;
@@ -120,7 +133,7 @@ export type Attempt = {
     revision: number;
     config?: AssessmentConfig;
 };
-export const kindLabels: Record<ModuleKind, string> = { spelling: 'Message accuracy', grammar: 'Prioritisation & judgement', typing: 'Typing', problem: 'Investigation & policy', writing: 'Written response' };
+export const kindLabels: Record<ModuleKind, string> = { questions: 'Questions', spelling: 'Message accuracy', grammar: 'Prioritisation & judgement', typing: 'Typing', problem: 'Investigation & policy', writing: 'Written response' };
 export const rubric = [
     { id: 'accuracy', title: 'Policy & accuracy', help: 'Uses the facts correctly, protects customer data and avoids unsupported promises', anchors: ['Misstates policy or invents a commitment', 'Mostly correct; one material omission', 'Accurate, complete and safely within policy'] },
     { id: 'empathy', title: 'Empathy & tone', help: 'Acknowledges the specific concern respectfully without sounding dismissive', anchors: ['Dismissive or blames the customer', 'Polite, but generic acknowledgment', 'Specific acknowledgment and calm, respectful language'] },

@@ -282,3 +282,5 @@
     .assessment-actions button { width: 100%; }
     .assessment-actions .candidate-link-action, .assessments-readonly .assessment-actions button { grid-column: 1 / -1; }
 }
+
+.module-type-picker{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.module-type-picker>button{height:auto;min-width:0;padding:20px 12px;flex-direction:column;white-space:normal}.module-presets>summary{cursor:pointer;font-weight:600}.module-presets .add-module-grid{margin-top:12px}@media(max-width:600px){.module-type-picker{grid-template-columns:1fr}.module-type-picker>button{flex-direction:row;justify-content:flex-start;padding:14px}}

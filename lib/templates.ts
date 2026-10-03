@@ -1,7 +1,8 @@
 // Imported only by the authenticated admin API. Never bundle answer keys into public client assets.
-import { ModuleKind, TestModule, Assessment, kindLabels } from './assessment';
+import { ModuleKind, TestModule, Assessment, kindLabels, blankModule } from './assessment';
 const uid = () => crypto.randomUUID();
 export function template(kind: ModuleKind): TestModule {
+    if (kind === 'questions') return blankModule(kind);
     const base = { id: uid(), kind, title: kindLabels[kind], seconds: 60, instructions: 'Choose the best answer for each question.' };
     if (kind === 'spelling')
         return { ...base, context: 'Case notes: Order R-184 was returned on Monday. The £48 refund was issued on Tuesday and takes 3–5 working days to reach the original payment method. No replacement has been dispatched.', questions: [

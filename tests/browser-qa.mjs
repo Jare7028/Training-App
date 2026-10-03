@@ -39,9 +39,20 @@ try {
         const alias = `BROWSER SYNTHETIC ${device} Applicant ${stamp}`;
         await navigate(page, 'Module library', device === 'mobile');
         await page.getByRole('button', { name: 'Create module', exact: true }).first().click();
-        await page.getByRole('dialog').getByRole('button', { name: 'Investigation & policy', exact: true }).click();
+        await page.getByRole('dialog').getByRole('button', { name: 'Questions', exact: true }).click();
         await page.getByLabel('Module title', { exact: true }).fill(moduleTitle);
         await page.getByLabel('Time limit (seconds)', { exact: true }).fill('90');
+        assert.equal(await page.getByLabel('Candidate instructions', { exact: true }).inputValue(), '');
+        for (const [i, correct] of [0, 2, 1].entries()) {
+            if (i) await page.getByRole('button', { name: 'Add a question from scratch', exact: true }).click();
+            const editor = page.locator('.question-editor').nth(i);
+            await editor.getByLabel('Question', { exact: true }).fill(`Custom decision ${i+1}: which action follows our process?`);
+            await editor.getByRole('button', { name: 'Add answer option', exact: true }).click();
+            for (let n=0;n<3;n++) await editor.getByLabel(`Question ${i+1}, option ${n+1}`, { exact: true }).fill(`Decision ${i+1}, action ${n+1}`);
+            await editor.getByRole('radio').nth(correct).check();
+            await editor.getByLabel('Answer explanation', { exact: true }).fill(`Our process requires action ${correct+1} for decision ${i+1}.`);
+        }
+
         await audit(page, `${device} module editor accessibility`);
         await noOverflow(page, `${device} module editor fits viewport`);
         await page.getByRole('button', { name: 'Save module', exact: true }).click();
@@ -62,6 +73,7 @@ try {
         await page.getByLabel('Allow going back to earlier answers', { exact: true }).check();
         await page.getByRole('button', { name: 'Add module', exact: true }).click();
         const option = page.getByRole('dialog').locator('.add-module-choice').filter({ hasText: 'Written response' });
+        await page.getByText('Use a preset', { exact: true }).click();
         await option.getByRole('button', { name: 'Use preset' }).click();
         await page.getByLabel('Time limit (seconds)', { exact: true }).fill('90');
         await page.getByRole('button', { name: 'Save & mark ready' }).click();

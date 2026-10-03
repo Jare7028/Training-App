@@ -34,7 +34,7 @@ export async function GET(request: Request) {
                     rows[i] = (await firstRow('attempts', { id: row.id, owner: user.workspaceOwner })) || row;
             }
         }
-        return json({ presets: Object.keys(kindLabels).map(k => template(k as ModuleKind)), assessments: tests.map(assessment), attempts: rows.map(attempt), library: library.map(r => ({ id: r.id, module: JSON.parse(String(r.content)), revision: r.revision, updatedAt: r.updated_at })), user: user.displayName, role: user.role, userId: user.userId });
+        return json({ presets: Object.keys(kindLabels).filter(k => k !== 'questions').map(k => template(k as ModuleKind)), assessments: tests.map(assessment), attempts: rows.map(attempt), library: library.map(r => ({ id: r.id, module: JSON.parse(String(r.content)), revision: r.revision, updatedAt: r.updated_at })), user: user.displayName, role: user.role, userId: user.userId });
     }
     catch (e) {
         console.error('Admin load', e);
@@ -79,7 +79,7 @@ export async function POST(request: Request) {
         const now = Date.now();
         if (body.action === 'save-module') {
             const contentModule = body.module;
-            const error = validateAssessment({ id: '', title: contentModule?.title, description: '', status: 'ready', modules: [contentModule], updatedAt: now, revision: 1 }, true);
+            const error = validateAssessment({ id: '', title: 'Module', description: '', status: 'ready', modules: [contentModule], updatedAt: now, revision: 1 }, true);
             if (error) return json({ error }, 400);
             const content = JSON.stringify({ ...cleanModule(contentModule), ...(contentModule.code ? {version: body.id ? Number(body.revision) + 1 : 1} : {}) });
             if (body.id) {

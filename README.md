@@ -31,6 +31,7 @@ npm run build
 npm run test:api
 npm run test:workflow
 npm run test:browser
+npm run test:modules
 npm run test:supabase
 npm run test:accounts
 npm run test:tenants
@@ -52,6 +53,8 @@ Admins can open **Accounts & permissions** to add accounts, change roles and sus
 | Viewer | Read assessments, modules and candidate results |
 
 Each account belongs to one workspace. Added team members share the inviting Admin's workspace; existing owner workspaces remain separate. The owner retains Admin access, and Admins cannot change their own access. Roles and suspension are checked from the database on every protected request, including existing sessions. Authenticated users can read only their own membership; tenant Admins can read their team. Membership changes go through the server. User-editable profile metadata cannot grant permissions.
+
+Choose **Create module** in Module library, then **Questions**, **Typing** or **Written response**. Each opens a blank editor for your own content. Questions have editable choices, correct answers and explanations; writing tasks have custom review criteria, rating ranges and anchors. Save the module to reuse it in assessments. **Add module** in the assessment builder offers the same blank types, saved library modules and optional presets.
 
 Reusable modules are stored separately from assessments. Editing a library module does not rewrite saved assessments or issued attempts. Default scenarios take about ten minutes. Assessors can change the shared work timer or each section’s time limit; there is no ten-minute policy cap.
 

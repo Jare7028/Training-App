@@ -73,7 +73,7 @@ function trend(rows: { created_at: number; submitted?: boolean; archived?: boole
     return { trend: [...buckets.values()], granularity };
 }
 function objective(result: Result | null) {
-    const modules = result?.modules.filter(m => ['spelling', 'grammar', 'problem'].includes(m.kind) && Number.isFinite(m.correct) && Number.isFinite(m.total) && m.total! > 0 && m.correct! >= 0 && m.correct! <= m.total!) || [];
+    const modules = result?.modules.filter(m => ['questions', 'spelling', 'grammar', 'problem'].includes(m.kind) && Number.isFinite(m.correct) && Number.isFinite(m.total) && m.total! > 0 && m.correct! >= 0 && m.correct! <= m.total!) || [];
     return { correct: modules.reduce((sum, m) => sum + m.correct!, 0), total: modules.reduce((sum, m) => sum + m.total!, 0) };
 }
 function typingUsable(score: ModuleScore) {
