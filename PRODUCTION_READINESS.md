@@ -2,7 +2,7 @@
 
 The app has been adapted for Next.js on Vercel with Supabase PostgreSQL and verified Supabase user sessions. It no longer trusts caller-supplied platform identity headers. No local mock login exists in the application.
 
-Before release, complete the live setup in DEPLOYMENT_HANDOFF.md and verify the exact deployed origin. In particular:
+The Supabase/Vercel setup in DEPLOYMENT_HANDOFF.md is connected and the administrator account is provisioned. Complete a low-stakes pilot before consequential hiring use. Release review includes:
 
 - Apply both PostgreSQL migrations, check all five tables, privileges and RLS. Browser roles must not access memberships, keys, snapshots or candidate responses directly.
 - Configure the server credential and initial owner emails in `ASSESS_ADMIN_EMAILS`. Verified owners bootstrap on first access; stored memberships then control access. Disable public registration while keeping email/password authentication available.
@@ -12,4 +12,4 @@ Before release, complete the live setup in DEPLOYMENT_HANDOFF.md and verify the 
 
 Candidate links are sensitive bearer credentials: seven-day expiry, server-stored SHA-256 hashes, revocation and no-referrer headers are implemented. Writing requires human judgement and evidence notes. Each owner has a separate workspace with Admin, Editor and Viewer memberships. Admins manage accounts and share one-time setup links without automatic email delivery. Verify role changes, suspension, setup links and cross-workspace isolation on the deployed origin before release.
 
-No real applicant records were imported from the prototype. No candidates or assessments are automatically seeded. Buddy's replacement bank has not been imported because the shared-library source was unavailable. This repository does not contain a live deployment identity or management token.
+No real applicant records were imported from the prototype. No candidates or assessments are automatically seeded. Buddy's supplied four-module core assessment has been implemented as editable content with versioned assignment snapshots, separate typing observations and evidence-based human rubrics. The source JSON contains administrative keys and must not be served publicly. This repository does not contain a live deployment identity or management token.

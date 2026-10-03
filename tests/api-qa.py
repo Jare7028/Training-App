@@ -84,7 +84,7 @@ try:
     cases=[]
     def bad(name,mutate):
         a=assessment([objective()]);mutate(a);cases.append((name,a))
-    bad('601-second total',lambda a:a.update(modules=[objective('one',seconds=300),objective('two',seconds=301)]))
+    bad('invalid module time',lambda a:a['modules'][0].update(seconds=86401))
     bad('empty ready assessment',lambda a:a.update(modules=[]))
     bad('14-second module',lambda a:a['modules'][0].update(seconds=14))
     bad('fractional seconds',lambda a:a['modules'][0].update(seconds=15.5))
@@ -106,7 +106,8 @@ try:
     for name,a in cases:
         s,d,h=admin({'action':'save','assessment':a});record('reject '+name,s==400,{'http':s,'error':d.get('error') if isinstance(d,dict) else str(d)},400)
     s,d,h=admin({'action':'save','assessment':assessment([],'draft')});record('empty scratch draft allowed',s==200,{'http':s},200)
-    s,d,h=admin({'action':'save','assessment':assessment([objective('at-limit',seconds=600)])});record('600-second maximum allowed',s==200,{'http':s},200)
+    s,d,h=admin({'action':'save','assessment':assessment([objective('at-limit',seconds=600)])});record('600-second assessment allowed',s==200,{'http':s},200)
+    s,d,h=admin({'action':'save','assessment':assessment([objective('longer',seconds=900)])});record('assessor can save a 15-minute assessment',s==200,{'http':s},200)
     s,d,h=admin({'action':'save','assessment':assessment([objective()]),'x':1})
     s,d,h=request('/api/admin',{'action':'save','assessment':assessment([objective()])},headers={'Origin':'https://untrusted.example'})
     record('foreign-origin recruiter mutation blocked',s==403,{'http':s},403)

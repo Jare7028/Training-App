@@ -9,13 +9,7 @@ const results = [];
 const record = (test, evidence = {}) => { results.push({ test, status: 'PASS', ...evidence }); writeFileSync('tests/browser-results.json', JSON.stringify(results, null, 2)); console.log(test); };
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : { executablePath: '/usr/bin/chromium' });
 async function audit(page, name) {
-    // Audit the settled UI rather than intermediate colours in button/dialog
-    // transitions. Exclude looping indicators from this bounded wait.
-    await page.evaluate(async () => {
-        await Promise.all(document.getAnimations()
-            .filter(animation => Number.isFinite(animation.effect?.getComputedTiming().endTime))
-            .map(animation => animation.finished.catch(() => {})));
-    });
+    await page.evaluate(async () => { await Promise.all(document.getAnimations().filter(a => a.playState === 'running' && Number.isFinite(a.effect?.getComputedTiming().endTime)).map(a => a.finished.catch(() => {}))); });
     const report = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
     assert.deepEqual(report.violations.map(v => ({ id: v.id, impact: v.impact, nodes: v.nodes.map(n => ({ target: n.target, summary: n.failureSummary })) })), [], name);
     record(name, { rulesPassed: report.passes.length });
@@ -60,6 +54,12 @@ try {
         moduleCard = page.locator('.library-card').filter({ has: page.getByRole('heading', { name: moduleTitle + ' saved', exact: true }) });
         await moduleCard.getByRole('button', { name: 'Build assessment' }).click();
         await page.getByLabel('Assessment title', { exact: true }).fill(title);
+        // Keep this fixture on the reviewable section-timer journey; question-flow covers the defaults.
+        await page.getByRole('combobox', { name: 'Candidate timing', exact: true }).click();
+        await page.getByRole('option', { name: 'Separate section timers', exact: true }).click();
+        await page.getByText('Candidate settings', { exact: true }).click();
+        await page.getByLabel('Show one question at a time', { exact: true }).uncheck();
+        await page.getByLabel('Allow going back to earlier answers', { exact: true }).check();
         await page.getByRole('button', { name: 'Add module', exact: true }).click();
         const option = page.getByRole('dialog').locator('.add-module-choice').filter({ hasText: 'Written response' });
         await option.getByRole('button', { name: 'Use preset' }).click();
@@ -70,7 +70,7 @@ try {
         let card = page.locator('.assessment-card').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
         const before = (await (await page.request.get(base + '/api/admin')).json()).attempts.length;
         await card.getByRole('button', { name: 'Preview test' }).click();
-        await page.getByText('Test preview · Your responses will not appear in candidate results.', { exact: true }).waitFor();
+        await page.getByText('Test preview', { exact: true }).waitFor();
         assert.equal((await (await page.request.get(base + '/api/admin')).json()).attempts.length, before);
         record(`${device} Preview test creates no candidate record`);
         await page.goto(base + '/');await page.getByRole('heading', { name: 'Assessments', exact: true }).waitFor();

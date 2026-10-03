@@ -11,4 +11,25 @@ Use the user's existing resources: Supabase project `nzoumetzzfvxavxdmjis` (`htt
 6. Provision the authorised app account. A Supabase dashboard account is separate from a Supabase Auth user for the app. Use an invitation after the production URL is configured; obtain explicit user authorisation before sending an email. Do not put passwords in source or chat.
 7. Verify login, account setup links, password reset, all three roles, immediate suspension, signed-out candidates, separate previews, scoring, stored human review and cross-workspace isolation on the deployed origin. Vercel deployment protection must permit public candidate routes. Then supply the actual website URL and login instructions.
 
-The old `chatgpt.site` address is a separate deployment and will not update. The current cloud session has returned proxy 403 for Supabase management and project endpoints, including after the user reported enabling Internet access. Hosted configuration has not been changed or verified. A Supabase management credential requirement and the two required domains have been saved in the cloud environment draft; saved draft settings are not proof of live access. No Vercel API tool or credential is exposed in this chat.
+## Connected deployment
+
+Production: https://training-app-ashy-eight.vercel.app. The Vercel project is `training-app` (`prj_5F9BwS2tgJF9qWJSy8tltW0dmzW7`), under `jared-claphams-projects-1afa8112`. It is connected to `Jare7028/Training-App` main, uses Next.js and Node 24, and has encrypted Supabase URL, publishable key, server service key and admin allowlist settings for production/preview. Permanent production aliases allow signed-out candidates; unique deployment URLs and previews retain Vercel protection.
+
+Supabase email/password authentication is enabled, public signup and anonymous authentication are disabled, and the minimum password length is 12. Site URL and the four callback/password paths are configured on both permanent production aliases. The real administrator Auth user is provisioned. Passwords and management credentials are absent from the repository.
+
+The hosted base schema was already present, recorded as migration `20261002164309` (`assessment_workspace`), with `20261002164339` (`restrict_rls_event_trigger_execution`). Preserve these records rather than replaying the base migration. The additional `assessment_administration` migration adds nullable assessment configuration without changing existing data; use the hosted migration history to find its management-assigned version. All four tables deny direct anonymous/authenticated access.
+
+Official Supabase MCP OAuth and the Vercel CLI are authenticated through private ignored runtime storage. The cloud network binding `SUPABASE_AUTH_CONFIG_TOKEN` authorises the management Auth-config endpoint; its value is not an app environment variable. Reuse working access before requesting any new credential. Do not assume native connector tools exist merely because a CLI connection was registered.
+
+Live password recovery was verified with a temporary synthetic Auth user, without sending email, and that user was removed. Default Supabase email templates remain unchanged: the free plan/default provider rejected template customisation. Actual mailbox delivery and third-party assessor invitations are separate checks; custom SMTP may be needed for addresses outside the Supabase organisation.
+
+The old `chatgpt.site` address is a separate deployment and is no longer used by this app.
+
+If a READY build serves an older global stylesheet, inspect the public page's stylesheet contents rather than relying on the commit label. A fresh Vercel production rebuild of the same Git SHA with the supported `forceNew=1` deployment option corrected this cache issue. Local diagnosis likewise required stopping the owned Next server and removing generated `.next` output before `build:local`. Do not remove source, private runtime authentication or database data.
+
+Assessment policy now lives in editable module/configuration fields; this change requires no database migration. Ten minutes remains a template default rather than a publication limit. New assignments snapshot the configured durations, typing options and link expiry.
+
+The Vercel REST helper uses a cached OAuth access token. If it expires, the authenticated CLI `whoami --global-config .runtime/vercel` refreshes the existing session; preserve the inherited proxy and CA trust. An expired cached token does not require another user-supplied token.
+
+
+Question display and backward navigation are editable assessment configuration fields, requiring no schema changes. New UI-created assessments and the supplied core default to `oneQuestionAtATime: true` and `allowBackNavigation: false`. Enable these settings for the existing core through the authenticated admin API using its current revision, preserving its content and all issued snapshots. Verify the deployed desktop/mobile flow with tracked synthetic fixtures and remove only their exact IDs. `npm run test:question-flow` is restricted to local QA.

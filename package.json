@@ -21,7 +21,14 @@
     "test:browser": "node tests/browser-qa.mjs",
     "test:supabase": "node tests/supabase-qa.mjs",
     "test:accounts": "node tests/accounts-qa.mjs",
-    "dev:local": "node scripts/local-dev.mjs"
+    "dev:local": "node scripts/local-dev.mjs",
+    "build:local": "node scripts/local-dev.mjs build",
+    "start:local": "node scripts/local-dev.mjs start",
+    "test:core": "node tests/typing-metrics.mjs && python3 tests/core-workflow.py",
+    "test:core:browser": "node tests/core-browser.mjs && node tests/typing-legacy-browser.mjs",
+    "test:reliability": "node tests/candidate-reliability.mjs && node tests/legacy-reliability.mjs",
+    "test:settings": "node tests/settings-browser.mjs",
+    "test:question-flow": "node tests/question-flow.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
