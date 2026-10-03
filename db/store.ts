@@ -1,8 +1,8 @@
 import 'server-only';
-import { createClient } from '@supabase/supabase-js';
+import { serviceClient } from '@/lib/supabase/admin';
 
 export type RecordRow = Record<string, unknown>;
-type Table = 'assessments' | 'attempts' | 'modules' | 'preview_attempts';
+type Table = 'assessments' | 'attempts' | 'modules' | 'preview_attempts' | 'workspace_members';
 const jsonColumns = new Set(['modules', 'content', 'snapshot', 'answers', 'result', 'review', 'config']);
 
 // Normalize serialized assessment snapshots at this boundary; PostgreSQL stores
@@ -15,12 +15,7 @@ function loaded(row: RecordRow): RecordRow {
     return Object.fromEntries(Object.entries(row).map(([key, value]) => [key,
         jsonColumns.has(key) && value !== null ? JSON.stringify(value) : value]));
 }
-function client() {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!url || !key) throw new Error('Supabase server configuration is missing.');
-    return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-}
+const client = serviceClient;
 export async function allRows(table: Table, filters: RecordRow, options: { order?: string; limit?: number } = {}) {
     let query = client().from(table).select('*');
     for (const [key, value] of Object.entries(filters)) query = query.eq(key, value);

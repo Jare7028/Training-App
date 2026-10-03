@@ -12,7 +12,7 @@ const { error: loginError } = await authenticated.auth.signInWithPassword({ emai
 assert.equal(loginError, null);
 let checks = 1;
 for (const [role, client] of [['anonymous', anonymous], ['authenticated', authenticated]]) {
-    for (const table of ['assessments', 'modules', 'attempts', 'preview_attempts']) {
+    for (const table of ['assessments', 'modules', 'attempts', 'preview_attempts', 'workspace_members']) {
         const { error, status } = await client.from(table).select('*');
         assert.ok(error, `${role} must not read ${table}`);
         assert.ok(status === 401 || status === 403);

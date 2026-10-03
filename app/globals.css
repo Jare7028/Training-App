@@ -94,3 +94,22 @@
 @media (max-width: 767px) { .score-inline { white-space: normal; } }
 
 .submission-error{font-size:.875rem;color:#883f39;overflow-wrap:anywhere}
+/* Team account management uses the same workspace controls on every viewport. */
+.role-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px; }
+.role-grid h2 { font-size: 16px; margin: 0 0 6px; }
+.account-list { border: 1px solid var(--border); border-radius: 12px; background: var(--card); overflow: hidden; }
+.account-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 20px; border-bottom: 1px solid var(--border); }
+.account-row:last-child { border-bottom: 0; }
+.account-identity { display: grid; gap: 6px; min-width: 0; overflow-wrap: anywhere; }
+.account-identity span, .account-identity small { color: var(--muted-foreground); }
+.account-controls { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; }
+.account-controls .field { margin: 0; }
+.account-controls select { min-width: 120px; }
+.assessment-details { max-height: 85dvh; overflow-y: auto; }
+.rubric-review fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+@media (max-width: 760px) {
+  .role-grid { grid-template-columns: 1fr; }
+  .account-row { flex-direction: column; align-items: stretch; gap: 16px; }
+  .account-controls { align-items: center; }
+  .account-controls .field { flex: 1 1 100%; }
+}

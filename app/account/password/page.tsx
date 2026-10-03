@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { authClient } from '@/lib/supabase/browser';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 export default function PasswordPage() {
@@ -16,8 +15,9 @@ export default function PasswordPage() {
         if (password.length < 12 || password !== confirm) { setMessage('Use at least 12 characters and make sure both passwords match.'); return; }
         setBusy(true); setMessage('');
         try {
-            const { error } = await authClient().auth.updateUser({ password });
-            if (error) throw new Error('This link may have expired. Request a new password reset email.');
+            const response = await fetch('/auth/password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error);
             router.push('/'); router.refresh();
         } catch (error) { setMessage((error as Error).message); }
         finally { setBusy(false); }
