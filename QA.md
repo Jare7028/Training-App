@@ -29,3 +29,25 @@ The updated core browser suite passed 32 checks, including sixteen automated WCA
 The final release passed 48 hosted browser checks: 36 for the complete desktop/mobile core journey and twelve for both legacy timer modes and editable module reuse, including eighteen automated WCAG audits. Its API regression passed 70 checks and the expanded local core workflow passed 25. All tracked hosted QA attempts, previews, assessments and the temporary library module were removed; the actual four core modules and assessment were preserved. Screenshots and machine-readable reports are retained under ignored test-results and private runtime directories; no real candidate records are used for QA.
 
 The original low-time countdown colour failed WCAG contrast (3.84:1) in the legacy typing test; its darker warning colour now passes. Incremental Next builds retained the old global stylesheet despite updated source. Removing only generated `.next` output after stopping the local server, then rebuilding, corrected the served asset. The release checks verify the actual served styles as well as the build result. The preserved responsive sign-in page also passed desktop/mobile WCAG audits.
+
+## Candidate connection recovery (local QA)
+
+`npm run test:reliability` exercises four controlled network failures against the local Next.js production server and real local Supabase. A delayed typing-interruption acknowledgement previously replaced keystrokes entered after reload with the earlier saved text. The candidate now keeps those edits, accepts the server's interruption metadata and revision, and autosaves the newer text without moving either deadline. A failed start now displays an accessible error beside the Start button; if the start reached the server but its response was lost, Reload saved state resumes the original timer. Recovery text uses a higher-contrast colour after the new mobile error-state audit exposed the previous 3.64:1 contrast.
+
+The regression suite checks a rejected start and successful retry, a committed start with a lost response and deadline-preserving resume, and real browser keystrokes entered while the interruption response is delayed. It verifies the final text in Supabase, both unchanged deadlines, the retained technical-review flag, mobile reflow, a zero-violation WCAG audit and no browser page errors. Fixtures are restricted to generated loopback configuration; cleanup deletes only the exact synthetic IDs created by that run.
+
+Initial verification at `c31e36d` passed the production build, typecheck, lint, three network-failure regressions, 70 API checks, 25 core workflow checks, 32 core browser checks and twelve legacy/reused typing checks. The scorer also matched all 14,641 reference alignments. These checks use isolated local fixtures. They are not authenticated production QA, and do not change authentication, scoring rules or production data. Run the database-backed suites sequentially as above.
+
+### PR #2 review verification
+
+The three tests submitted at `c31e36d` were rerun unchanged against a separately built `ef1db70` checkout. Both start-recovery tests failed because their alerts were missing; the typing test failed because `Case 2048 is open.` reverted to `Case `. All three passed against the exact `c31e36d` build.
+
+An additional delayed-response test exposed a remaining display issue at `c31e36d`: the typing countdown jumped from 57 seconds back to 60 when an old `serverNow` timestamp arrived. The client now keeps its monotonic elapsed-time estimate when a response carries an older timestamp. Server deadlines and scoring rules are unchanged. The fourth regression observes both visible countdowns after the delayed acknowledgement and verifies that neither gains time.
+
+At review time, `main` remained at `ef1db70`. The exact `c31e36d` Vercel preview build was Ready, but the repository had no GitHub Actions workflows or PR-triggered workflow runs; a green preview-build status is not evidence that the regression suites ran in CI. Production rollout and authenticated production QA remain separate from these local results.
+
+The review rerun also caught an intermittent failure in the existing desktop typing-focus assertion: the one-shot animation-frame callback could run before the input was mounted. Typing focus now follows the committed active-typing state in an effect, rather than racing the DOM update. The existing two-second focus assertion was retained unchanged.
+
+The legacy browser rerun exposed a fixture collision: repeated runs left identically named synthetic library modules, so its broad selector matched multiple buttons. The fixture now has a run-specific title and an exact selector. Earlier local fixtures are preserved.
+
+After the review corrections, the production build, typecheck, lint, four recovery regressions, 25 core workflow checks, 32 core browser checks and twelve legacy/reuse browser checks passed. The scoring reference comparison also passed all 14,641 alignments. The unchanged desktop focus assertion passed; no timeouts or accessibility assertions were relaxed.

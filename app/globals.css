@@ -32,3 +32,6 @@
 .typing-passage{color:#162d3b}.typing-passage:focus-visible{outline:2px solid #123d40;outline-offset:3px}
 
 .flexible-assessment .question-evidence p{color:#162d3b;font-size:1rem}
+
+/* Keep candidate recovery messages readable on their tinted background. */
+.save-error{color:#803a32}

@@ -30,7 +30,11 @@ export default function FlexibleCandidate({ token, initial }: { token: string; i
     const typingInput = useRef<HTMLTextAreaElement>(null);
     useEffect(() => { clock.current.local = performance.now(); const interval = setInterval(() => setNow(clock.current.server + performance.now() - clock.current.local), 250); return () => clearInterval(interval); }, []);
     const accept = useCallback((next: FlexibleSession, replace: boolean) => {
-        state.current = next; setSession(next); clock.current = { server: next.serverNow, local: performance.now() };
+        state.current = next; setSession(next);
+        const local = performance.now();
+        // Delayed acknowledgements must not rewind the already-running countdown.
+        const estimatedNow = clock.current.server + local - clock.current.local;
+        clock.current = { server: Math.max(next.serverNow, estimatedNow), local };
         if (replace) { input.current = next.answer || {}; setAnswer(input.current); dirty.current = false; }
         if (next.status === 'completed') { setConfirm(false); setReview(false); }
     }, []);
@@ -42,10 +46,18 @@ export default function FlexibleCandidate({ token, initial }: { token: string; i
             const response = await fetch('/api/candidate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, action, index, revision: previous.revision, answer: outgoing }) });
             const next = await response.json();
             if (!response.ok) throw new Error(next.error || 'Submission not confirmed. Retry saving.');
-            accept(next, action !== 'save' || next.status === 'completed');
-            if (action === 'save') dirty.current = JSON.stringify(outgoing) !== JSON.stringify(input.current);
+            const keepEdits = (action === 'save' || action === 'typing-interrupted') && next.status === previous.status && next.currentIndex === previous.currentIndex;
+            const editedWhileSaving = JSON.stringify(outgoing) !== JSON.stringify(input.current);
+            accept(next, !keepEdits);
+            if (keepEdits) {
+                if (action === 'typing-interrupted') {
+                    // A reload acknowledgement updates timing metadata, not newer keystrokes.
+                    input.current = { ...next.answer, text: input.current.text };
+                    setAnswer(input.current);
+                }
+                dirty.current = editedWhileSaving;
+            }
             setError(''); setSaved(dirty.current ? 'Unsaved changes' : 'Saved');
-            if (action === 'typing-start') requestAnimationFrame(() => typingInput.current?.focus());
             return true;
         } catch (e) { setError((e as Error).message); setSaved('Not saved'); return false; }
         finally { flight.current = false; setBusy(false); }
@@ -53,6 +65,10 @@ export default function FlexibleCandidate({ token, initial }: { token: string; i
     useEffect(() => { const interval = setInterval(() => { if (dirty.current && state.current.status === 'in-progress') void send('save'); }, 1500); return () => clearInterval(interval); }, [send]);
     const section = session.modules?.[session.currentIndex];
     const typing = answer.typing;
+    const typingStartedAt = typing?.startedAt, typingComplete = typing?.complete;
+    useEffect(() => {
+        if (typingStartedAt && !typingComplete) typingInput.current?.focus();
+    }, [typingStartedAt, typingComplete]);
     const typingWindow = section ? typingSeconds(section) : 60;
     const totalLeft = Math.max(0, Math.ceil(((session.deadline || now) - now) / 1000));
     const typingLeft = Math.max(0, Math.ceil(((typing?.deadline || now) - now) / 1000));
@@ -76,7 +92,7 @@ export default function FlexibleCandidate({ token, initial }: { token: string; i
         {session.preview && <div className="mini-notice">Test preview · Your responses will not appear in candidate results.</div>}
         {session.status === 'completed' ? <section className="completion-card"><h1>Your responses have been submitted</h1><p>Thank you for taking the assessment. The hiring team will review your answers and contact you about the next step.</p><p>Attempt reference: {session.id}</p><p>{support}</p>{session.preview && <Button asChild><Link href="/">Return to workspace</Link></Button>}</section> : session.status === 'not-started' ? <>
             <div className="candidate-welcome"><h1>{session.title}</h1><p>{session.description}</p><p>About {Math.ceil((session.seconds + session.config.introductionSeconds)/60)} minutes · {formatTime(session.seconds)} timed work · {session.sections.length} sections</p></div>
-            <div className="welcome-layout"><section className="welcome-instructions"><h2>Before you start</h2><p>All customers and policies are fictional. Everything you need is provided. Choose the best-supported answers and write your customer reply in your own words.</p><p>You can revisit and edit non-typing answers until submission. Typing samples have a separate, deliberate start and a fixed measured window. The work timer includes reading, practice and review; it cannot be paused.</p><p>{session.config.toolPolicy}</p><p>{session.config.notice}</p><p>Do not include real customer details, passwords, payment information or medical information in your answers.</p><p>{support}</p><h3>Unscored keyboard check</h3><Textarea aria-label="Unscored keyboard check" rows={2} placeholder="Case 2048 is open. The next update is due at 14:30."/><label className="ready-checkbox"><Checkbox checked={ready} onCheckedChange={v=>setReady(v===true)} id="flexible-ready"/><span>I’ve read the instructions and I’m ready to start</span></label><Button disabled={!ready || busy} onClick={()=>void send('start')}>Start assessment</Button></section><aside className="welcome-sections"><h2>Your work sample</h2><ol>{session.sections.map((s,i)=><li key={i}><span>{i+1}</span><div><strong>{s.title}</strong><small>{formatTime(s.seconds)} suggested</small></div></li>)}</ol><p>Section times are guidance. Spend unused time where you need it.</p></aside></div>
+            <div className="welcome-layout"><section className="welcome-instructions"><h2>Before you start</h2><p>All customers and policies are fictional. Everything you need is provided. Choose the best-supported answers and write your customer reply in your own words.</p><p>You can revisit and edit non-typing answers until submission. Typing samples have a separate, deliberate start and a fixed measured window. The work timer includes reading, practice and review; it cannot be paused.</p><p>{session.config.toolPolicy}</p><p>{session.config.notice}</p><p>Do not include real customer details, passwords, payment information or medical information in your answers.</p><p>{support}</p><h3>Unscored keyboard check</h3><Textarea aria-label="Unscored keyboard check" rows={2} placeholder="Case 2048 is open. The next update is due at 14:30."/><label className="ready-checkbox"><Checkbox checked={ready} onCheckedChange={v=>setReady(v===true)} id="flexible-ready"/><span>I’ve read the instructions and I’m ready to start</span></label>{error && <div className="save-error" role="alert"><div><strong>We couldn’t confirm the start</strong><p>{error}</p><p>Try starting again, or reload saved state if your connection dropped after starting. Your original timer will be preserved.</p><Button disabled={busy} variant="outline" onClick={()=>void reload()}>Reload saved state</Button></div></div>}<Button disabled={!ready || busy} onClick={()=>void send('start')}>Start assessment</Button></section><aside className="welcome-sections"><h2>Your work sample</h2><ol>{session.sections.map((s,i)=><li key={i}><span>{i+1}</span><div><strong>{s.title}</strong><small>{formatTime(s.seconds)} suggested</small></div></li>)}</ol><p>Section times are guidance. Spend unused time where you need it.</p></aside></div>
         </> : <div className="candidate-test"><aside className="test-outline"><h2>Your progress</h2><ol>{session.sections.map((s,i)=><li className={i===session.currentIndex?'current':''} key={i}><div><Button variant="ghost" disabled={busy || measured} onClick={()=>void send('navigate',i).then(ok=>{if(ok)setReview(false);})}>{i+1}. {s.title}</Button><small>{s.kind==='typing' && answers[session.modules?.[i]?.id||'']?.typing?.complete?'Typing locked':'Answers can be reviewed'}</small></div></li>)}</ol><div className="overall-clock"><small>Work time remaining</small><strong role="timer" aria-label="Work time remaining">{formatTime(totalLeft)}</strong></div><p role="status">{totalLeft <= 60 ? 'One minute or less remains. Saved work will be submitted when time expires.' : ''}</p></aside><section className="test-surface">
             {error && <div className="save-error" role="alert"><div><strong>Saving needs attention</strong><p>{error} Your text is retained here. Submission is not confirmed.</p><Button disabled={busy} onClick={()=>void send('save')}>Retry saving</Button><Button disabled={busy} variant="outline" onClick={()=>void reload()}>Reload saved state</Button></div></div>}
             {review ? <><h1>Review your answers</h1><p>You can return to any non-typing section before submitting.</p>{session.modules?.map((m,i)=><section className="question-evidence" key={m.id}><h2>{m.title}</h2>{m.questions?.map(q=><p key={q.id}>{q.prompt}<br/><strong>{answers[m.id]?.choices?.[q.id]===undefined?'Unanswered':q.options[answers[m.id].choices![q.id]]}</strong></p>)}{m.kind==='writing'&&<p>{answers[m.id]?.text||'No written reply yet.'}</p>}{m.kind==='typing'&&<p>{answers[m.id]?.typing?.complete?'Typing sample saved and locked':answers[m.id]?.typing?'Typing incomplete — technical review':'Typing not attempted'}</p>}<Button variant="outline" disabled={busy} onClick={()=>void send('navigate',i).then(ok=>{if(ok)setReview(false);})}>Review section {i+1}</Button></section>)}<Button disabled={busy} onClick={()=>setConfirm(true)}>Submit assessment</Button></> : <>
