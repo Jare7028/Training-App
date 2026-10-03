@@ -207,6 +207,8 @@
     "spellCheck": true,
     "toolPolicy": "Use your own reasoning and writing, without AI or help from other people. Ordinary spelling tools are allowed for the customer email. Agreed assistive technology is allowed. Copy the typing passage yourself; practice is unscored.",
     "notice": "Your assessment responses are saved for the hiring team to review. Contact the person who sent this link for an adjustment, technical help, or information about data retention and deletion.",
-    "stage": "pilot"
+    "stage": "pilot",
+    "oneQuestionAtATime": true,
+    "allowBackNavigation": false
   }
 }

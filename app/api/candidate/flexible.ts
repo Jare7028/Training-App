@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { firstRow, updateRows, RecordRow } from '@/db/store';
 import { Answer, Assessment, scoreAttempt, workDuration, typingSeconds, canFinishTypingEarly } from '@/lib/assessment';
 
+import { questionAnswer, moveQuestion, navigationError, hasNextQuestion } from '@/lib/candidate-flow';
+
 type Command = { action: string; revision: number; answer?: Answer; index?: number };
 export async function flexibleCommand(row: RecordRow, body: Command, view: (row: RecordRow) => unknown) {
     const table = row.preview ? 'preview_attempts' : 'attempts';
@@ -17,7 +19,7 @@ export async function flexibleCommand(row: RecordRow, body: Command, view: (row:
         Object.assign(patch, { status: 'in-progress', started_at: now, deadline: now + workDuration(assessment) * 1000, section_started_at: now });
     } else {
         if (row.status !== 'in-progress') return fail('Start the assessment before answering.');
-        if (!['save','navigate','submit','typing-start','typing-finish','typing-interrupted'].includes(body.action)) return fail('Invalid action.');
+        if (!['save','navigate','submit','typing-start','typing-finish','typing-interrupted','question-next','question-back'].includes(body.action)) return fail('Invalid action.');
         if (body.action === 'typing-start') {
             if (section.kind !== 'typing') return fail('This section is not a measured typing task.');
             if (existing.typing) return fail('The typing sample cannot be restarted.');
@@ -45,24 +47,30 @@ export async function flexibleCommand(row: RecordRow, body: Command, view: (row:
                 if (body.action === 'navigate' && existing.typing && !existing.typing.complete) return fail('Finish the measured typing task before changing sections.');
             } else if (incoming) {
                 if (section.questions) {
-                    const choices: Record<string, number> = {};
-                    for (const q of section.questions) {
-                        const choice = incoming.choices?.[q.id];
-                        if (choice !== undefined) { if (!Number.isInteger(choice) || choice < 0 || choice >= q.options.length) return fail('Invalid answer choice.'); choices[q.id] = choice; }
-                    }
-                    answers[section.id] = { choices };
+                    const selected = questionAnswer(section,existing,incoming,assessment.config);
+                    if (selected.error) return fail(selected.error);
+                    answers[section.id] = selected.answer!;
                 } else {
                     if (typeof incoming.text !== 'string' || incoming.text.length > 5000) return fail('Keep the reply under 5,000 characters.');
                     answers[section.id] = { text: incoming.text };
                 }
             }
         }
+        if (['question-next','question-back'].includes(body.action)) {
+            const current = answers[section.id] || {};
+            const error = moveQuestion(section,current,body.action,assessment.config);
+            if (error) return fail(error);
+            answers[section.id] = current;
+        }
         patch.answers = JSON.stringify(answers);
         if (body.action === 'navigate') {
             if (!Number.isInteger(body.index) || body.index! < 0 || body.index! >= assessment.modules.length) return fail('Invalid section.');
+            const error = navigationError(section,answers[section.id] || {},assessment.config,index,body.index!);
+            if (error) return fail(error);
             patch.current_index = body.index;
         }
         if (body.action === 'submit') {
+            if (now < Number(row.deadline) && assessment.config?.allowBackNavigation === false && (index !== assessment.modules.length - 1 || hasNextQuestion(section,answers[section.id] || {},assessment.config))) return fail('Continue through the assessment before submitting.');
             patch.status = 'completed';
             patch.result = JSON.stringify(scoreAttempt(assessment.modules, answers, Math.min(now, Number(row.deadline)), now >= Number(row.deadline)));
         }

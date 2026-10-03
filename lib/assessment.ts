@@ -10,7 +10,7 @@ export type Question = {
     correctOptionId?: string;
 };
 export type Criterion = { id: string; title: string; help: string; anchors: string[]; max: number };
-export type AssessmentConfig = { stage?: 'pilot' | 'approved'; linkExpiryDays?: number; adjustmentSeconds?: number; flexible: boolean; workSeconds: number; introductionSeconds: number; code: string; supportEmail: string; toolPolicy: string; spellCheck: boolean; notice: string };
+export type AssessmentConfig = { stage?: 'pilot' | 'approved'; oneQuestionAtATime?: boolean; allowBackNavigation?: boolean; linkExpiryDays?: number; adjustmentSeconds?: number; flexible: boolean; workSeconds: number; introductionSeconds: number; code: string; supportEmail: string; toolPolicy: string; spellCheck: boolean; notice: string };
 export type TestModule = {
     id: string;
     kind: ModuleKind;
@@ -26,6 +26,8 @@ export type TestModule = {
     version?: number;
     practice?: string;
     typingMode?: 'prefix-v1';
+    questionIndex?: number;
+    questionCount?: number;
     typingSeconds?: number;
     finishTypingEarly?: boolean;
     allowPaste?: boolean;
@@ -46,6 +48,7 @@ export type Assessment = {
     config?: AssessmentConfig;
 };
 export type Answer = {
+    questionIndex?: number;
     choices?: Record<string, number>;
     text?: string;
     typing?: { startedAt: number; deadline: number; complete: boolean; seconds?: number; ceiling?: boolean; interrupted?: boolean };
@@ -156,6 +159,7 @@ export function validateAssessment(a: Assessment, publishing = false): string | 
         return 'Invalid module.';
     if (new Set(a.modules.map(m => m.id)).size !== a.modules.length)
         return 'Module IDs must be unique.';
+    if (a.config && ['oneQuestionAtATime','allowBackNavigation'].some(k => a.config![k as keyof AssessmentConfig] !== undefined && typeof a.config![k as keyof AssessmentConfig] !== 'boolean')) return 'Check the question display and navigation settings.';
     if (a.config?.linkExpiryDays !== undefined && (!Number.isInteger(a.config.linkExpiryDays) || a.config.linkExpiryDays < 1 || a.config.linkExpiryDays > 365)) return 'Link expiry must be 1–365 days.';
     if (a.config && (!Number.isInteger(a.config.workSeconds) || a.config.workSeconds < 15 || a.config.workSeconds > 86400 || !Number.isInteger(a.config.introductionSeconds) || a.config.introductionSeconds < 0 || a.config.introductionSeconds > 86400 || typeof a.config.flexible !== 'boolean' || typeof a.config.spellCheck !== 'boolean' || ['code','supportEmail','toolPolicy','notice'].some(k => typeof a.config![k as keyof AssessmentConfig] !== 'string' || String(a.config![k as keyof AssessmentConfig]).length > 3000) || (a.config.supportEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a.config.supportEmail)))) return 'Check the work timer, introduction and administration settings.';
     for (const m of a.modules) {

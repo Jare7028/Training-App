@@ -29,3 +29,6 @@ If a READY build serves an older global stylesheet, inspect the public page's st
 Assessment policy now lives in editable module/configuration fields; this change requires no database migration. Ten minutes remains a template default rather than a publication limit. New assignments snapshot the configured durations, typing options and link expiry.
 
 The Vercel REST helper uses a cached OAuth access token. If it expires, the authenticated CLI `whoami --global-config .runtime/vercel` refreshes the existing session; preserve the inherited proxy and CA trust. An expired cached token does not require another user-supplied token.
+
+
+Question display and backward navigation are editable assessment configuration fields, requiring no schema changes. New UI-created assessments and the supplied core default to `oneQuestionAtATime: true` and `allowBackNavigation: false`. Enable these settings for the existing core through the authenticated admin API using its current revision, preserving its content and all issued snapshots. Verify the deployed desktop/mobile flow with tracked synthetic fixtures and remove only their exact IDs. `npm run test:question-flow` is restricted to local QA.

@@ -26,7 +26,8 @@
     "test:core": "node tests/typing-metrics.mjs && python3 tests/core-workflow.py",
     "test:core:browser": "node tests/core-browser.mjs && node tests/typing-legacy-browser.mjs",
     "test:reliability": "node tests/candidate-reliability.mjs",
-    "test:settings": "node tests/settings-browser.mjs"
+    "test:settings": "node tests/settings-browser.mjs",
+    "test:question-flow": "node tests/question-flow.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

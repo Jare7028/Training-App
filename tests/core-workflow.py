@@ -24,6 +24,7 @@ def command(token,state,action,answer=None,**kwargs): return candidate(token,{'a
 
 good('/auth/login',{'email':'recruiter@qa.invalid','password':'Local-QA-Only-57!Password'})
 assessment = json.load(open('content/customer-service-core-v1.json'))
+assessment['config']['oneQuestionAtATime']=False;assessment['config']['allowBackNavigation']=True # Optional reviewable journey fixture.
 assessment['title']='WORKFLOW SYNTHETIC Shared-timer core'
 assessment['config']['workSeconds']=120
 check('approved content has B/A/B/C keys and 590-second planned journey', [q['correct'] for m in assessment['modules'] for q in m.get('questions',[])]==[1,0,1,2] and sum(m['seconds'] for m in assessment['modules'])+60+20==590)

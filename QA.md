@@ -63,3 +63,12 @@ The release passed typecheck, lint and a fresh production build; 71 API regressi
 Legacy default section-timer answer payloads remain compatible. Custom/measured typing records server timing metadata. The new sequential test waits for the active input before reading its deadline; it does not assume a button click has already committed the start request. Paste-rejection checks retain the same input/focus assertions using the shortened user-facing message.
 
 The production origin passed 50 live checks for the configured rules and complete desktop/mobile core journey, including separate protected previews, duplicate submissions and saved human reviews. Only directly tracked synthetic records were removed. A final follow-up makes sequential typing’s displayed section duration, overall deadline and review time budget use the configured measurement window rather than the shared-mode preparation budget; the settings regression asserts all three clocks agree.
+
+
+## Question display and navigation
+
+New UI-created assessments and the supplied core default to one question at a time with backward navigation disabled. Assessors can edit either setting under Candidate settings. The server owns the current question index, merges answers without dropping earlier choices, hides unavailable questions and rejects earlier-answer edits, section jumps and premature submission. Question changes preserve the shared or section deadline. Issued assignments retain their snapshots; no database migration is needed.
+
+The local release passed fifteen new question-flow checks, including desktop shared timing, mobile section timing, refresh, a lost Next acknowledgement, API bypass attempts, saved objective scores, typing/writing completion, duplicate submission and human review. Two automated WCAG audits and mobile reflow checks passed. Explicitly enabling backward navigation is also covered. The existing reviewable-journey fixtures now explicitly select that configuration, keeping their prior assertions intact.
+
+The regression run passed 71 API checks, 25 core workflow checks, 32 core browser checks, twelve legacy/reuse typing checks, fourteen configurable-settings checks and four connection-recovery checks. The independent typing oracle passed all 14,641 comparisons. Typecheck, lint and a fresh production build passed.

@@ -47,6 +47,7 @@ async function run(name, test) {
 try {
     await request(admin, '/auth/login', { email: 'recruiter@qa.invalid', password: 'Local-QA-Only-57!Password' });
     const assessment = JSON.parse(readFileSync('content/customer-service-core-v1.json', 'utf8'));
+assessment.config.oneQuestionAtATime=false;assessment.config.allowBackNavigation=true; // This fixture verifies the optional reviewable journey.
     assessment.title = `BROWSER SYNTHETIC Reliability ${Date.now()}`;
     assessment.config.code = 'QA-RELIABILITY';
     assessmentId = (await request(admin, '/api/admin', { action: 'save', assessment })).id;

@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
 const base='http://127.0.0.1:5173';
 const content=JSON.parse(readFileSync('content/customer-service-core-v1.json','utf8'));
+content.config.oneQuestionAtATime=false;content.config.allowBackNavigation=true; // This fixture verifies the optional reviewable journey.
 const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium'});
 const results=[];mkdirSync('test-results/core',{recursive:true});
 function pass(name){results.push({test:name,status:'PASS'});writeFileSync('test-results/core/browser-results.json',JSON.stringify(results,null,2));console.log('PASS:',name);}
