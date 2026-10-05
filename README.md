@@ -36,6 +36,7 @@ npm run test:candidate-tools
 npm run test:supabase
 npm run test:accounts
 npm run test:usernames
+npm run test:passwords
 npm run test:tenants
 npm run test:clean
 ```
@@ -46,7 +47,7 @@ Run the live QA suites sequentially against the local development server: they s
 
 Team members sign in with an Admin-created username/password or their existing email/password. `ASSESS_ADMIN_EMAILS` bootstraps existing verified accounts as owners of their separate workspaces; after that, the database membership controls access. Apply all repository migrations before starting the app.
 
-Admins can open **Accounts & permissions → Add account** and enter a username, password, optional name and role. The new account can sign in immediately without an email or setup link. Usernames are case-insensitive, globally unique and contain 3–40 letters, numbers, dots, hyphens or underscores, starting with a letter or number. Passwords must contain 12–256 characters. Passwords are handled by Supabase Auth and never stored in workspace memberships or returned by the account API. A private internal Auth address maps to the trusted membership username; it is not a contact address. Existing email logins and passwords are preserved. Accounts still awaiting setup have a **Set password** action, which cannot reset confirmed, owner or foreign accounts. Legacy invitation API actions remain compatible with old clients, but the current account screen uses direct credentials. Accounts already belonging to another workspace cannot be moved through this screen.
+Admins can open **Accounts & permissions → Add account** and enter a username, password, optional name and role. The new account can sign in immediately without an email or setup link. Usernames are case-insensitive, globally unique and contain 3–40 letters, numbers, dots, hyphens or underscores, starting with a letter or number. Passwords must contain 12–256 characters. Passwords are handled by Supabase Auth and never stored in workspace memberships or returned by the account API. A private internal Auth address maps to the trusted membership username; it is not a contact address. Existing email logins and passwords are preserved. To replace a staff password, use **Change password**, enter and confirm the new password, and save. Admins can change confirmed staff passwords in their own workspace without an email or link; roles, usernames and suspension are retained. **Change my password** opens the existing signed-in personal password page. Other Admins cannot reset the workspace owner or their own password through the staff reset API. Accounts still awaiting setup have a **Set password** action, which cannot reset confirmed, owner or foreign accounts. Legacy invitation API actions remain compatible with old clients, but the current account screen uses direct credentials. Accounts already belonging to another workspace cannot be moved through this screen.
 
 | Role | Access |
 | --- | --- |

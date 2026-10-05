@@ -14,6 +14,7 @@ const username = z.string().transform(normalizeUsername).pipe(z.string().regex(u
 const input = z.discriminatedUnion('action', [
     z.object({ action: z.literal('create'), username, password, name: z.string().trim().max(100).optional(), role: z.enum(roles) }).strict(),
     z.object({ action: z.literal('activate'), id: z.string().uuid(), password }).strict(),
+    z.object({ action: z.literal('change-password'), id: z.string().uuid(), password }).strict(),
     z.object({ action: z.literal('add'), email: z.string().trim().toLowerCase().email().max(254), name: z.string().trim().min(1).max(100), role: z.enum(roles) }).strict(),
     z.object({ action: z.literal('update'), id: z.string().uuid(), role: z.enum(roles), status: z.enum(['active', 'suspended']), revision: z.number().int().positive() }).strict(),
     z.object({ action: z.literal('setup-link'), id: z.string().uuid() }).strict(),
@@ -109,6 +110,17 @@ export async function POST(request: Request) {
         }
         const member = await firstRow('workspace_members', { id: body.id, workspace_owner: user.workspaceOwner });
         if (!member) return json({ error: 'Account not found.' }, 404);
+        if (body.action === 'change-password') {
+            if (body.id === user.workspaceOwner || body.id === user.userId)
+                return json({error:'Use your own password settings. Other Admins cannot reset the workspace owner’s password.'},403);
+            const {data:identity,error:lookupError}=await admin.getUserById(body.id);
+            if (lookupError || !identity.user) return json({error:'Account status could not be checked. Please retry.'},503);
+            if (!identity.user.email_confirmed_at) return json({error:'This account needs password setup. Use Set password.'},409);
+            // Change only the password, leaving identity, role and suspension intact.
+            const {error}=await admin.updateUserById(body.id,{password:body.password});
+            if(error) return json({error:error.code==='weak_password'?'Choose a stronger password.':error.code==='same_password'?'Choose a different password.':'The password could not be changed. Please retry.'},error.code==='weak_password'||error.code==='same_password'?400:503);
+            return json({ok:true});
+        }
         if (body.action === 'activate') {
             if (body.id === user.workspaceOwner || body.id === user.userId) return json({error:'Use your own account settings to change your password.'},403);
             if (member.status !== 'active') return json({error:'Restore account access before setting a password.'},400);

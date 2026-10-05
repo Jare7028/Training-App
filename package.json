@@ -35,7 +35,8 @@
     "test:preview": "node tests/preview-parity.mjs",
     "test:question-flow": "node tests/question-flow.mjs",
     "test:modules": "node tests/module-creation.mjs",
-    "test:candidate-tools": "node tests/candidate-tools-metrics.mjs && node tests/candidate-tools.mjs"
+    "test:candidate-tools": "node tests/candidate-tools-metrics.mjs && node tests/candidate-tools.mjs",
+    "test:passwords": "node tests/account-passwords.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
