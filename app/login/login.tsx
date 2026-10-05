@@ -16,7 +16,7 @@ export default function Login({ configured }: { configured: boolean }) {
     async function signIn(event: React.FormEvent) {
         event.preventDefault(); setBusy(true); setMessage('');
         try {
-            const response = await fetch('/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+            const response = await fetch('/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ identifier:email, password }) });
             const data = await response.json();
             if (!response.ok) throw new Error(data.error);
             router.push('/'); router.refresh();
@@ -24,7 +24,7 @@ export default function Login({ configured }: { configured: boolean }) {
         finally { setBusy(false); }
     }
     async function reset() {
-        if (!email.trim()) { setMessage('Enter your email address first.'); return; }
+        if (!email.trim().includes('@')) { setMessage('For a username account, ask your workspace Admin for help. For an email account, enter your email address first.'); return; }
         setBusy(true); setMessage('');
         try {
             const { error } = await authClient().auth.resetPasswordForEmail(email.trim(), { redirectTo: `${window.location.origin}/auth/callback?next=/account/password` });
@@ -35,7 +35,7 @@ export default function Login({ configured }: { configured: boolean }) {
     }
     if (!configured) return <p role="status">Admin sign-in is available once workspace setup is complete.</p>;
     return <form onSubmit={signIn} className={`auth-form ${styles.form}`}>
-        <label className="field"><span>Email address</span><Input type="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} required maxLength={254}/></label>
+        <label className="field"><span>Username or email</span><Input type="text" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} required maxLength={254}/></label>
         <label className="field"><span>Password</span><Input type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} required maxLength={256}/></label>
         <p className={styles.feedback} role="status" aria-live="polite">{message}</p>
         <Button disabled={busy} type="submit">{busy ? 'Please wait…' : 'Sign in'}</Button>

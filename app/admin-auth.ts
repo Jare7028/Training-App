@@ -37,5 +37,5 @@ export async function getAssessmentAdmin() {
     if (!tenant) return null;
     return { userId: user.id, workspaceOwner: tenant.owner_id as string, tenantId: tenant.id as string,
         tenantName: tenant.name as string, isGlobalAdmin, email: user.email,
-        displayName: String(member.name), role: isGlobalAdmin ? 'admin' as const : member.role };
+        displayName: String(member.name), loginName: String(member.username || user.email), role: isGlobalAdmin ? 'admin' as const : member.role };
 }

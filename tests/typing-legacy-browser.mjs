@@ -10,7 +10,7 @@ let checks=0;const pass=name=>{checks++;console.log('PASS:',name);};
 mkdirSync('test-results/core',{recursive:true});
 async function api(page,body){const result=await page.evaluate(async body=>{const r=await fetch('/api/admin',{method:body?'POST':'GET',headers:{'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});return {status:r.status,data:await r.json()};},body);assert.equal(result.status,200);return result.data;}
 try {
-    const admin=await browser.newPage();await admin.goto(base+'/login');await admin.getByLabel('Email address',{exact:true}).fill('recruiter@qa.invalid');await admin.getByLabel('Password',{exact:true}).fill('Local-QA-Only-57!Password');await admin.getByRole('button',{name:'Sign in',exact:true}).click();await admin.getByRole('heading',{name:'Assessments',exact:true}).waitFor();
+    const admin=await browser.newPage();await admin.goto(base+'/login');await admin.getByLabel('Username or email',{exact:true}).fill('recruiter@qa.invalid');await admin.getByLabel('Password',{exact:true}).fill('Local-QA-Only-57!Password');await admin.getByRole('button',{name:'Sign in',exact:true}).click();await admin.getByRole('heading',{name:'Assessments',exact:true}).waitFor();
     const passage=('Update the case notes accurately before handing the ticket to the next adviser. Confirm the order number, explain what has been checked, and record the next promised update. Keep the customer informed even when the investigation is still open. ').repeat(4).trim();
     for(const shared of [false,true]) {
     const typingModule={id:'legacy-typing',kind:'typing',title:'Editable legacy typing',seconds:15,instructions:'Copy these case notes.',passage,targetWpm:45};

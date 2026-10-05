@@ -17,7 +17,7 @@ const reply=content.modules[3].example;
 try{
 for(const [device,viewport] of [['mobile',{width:390,height:844}],['desktop',{width:1440,height:1000}]]){
  const adminContext=await browser.newContext({viewport});const admin=await adminContext.newPage();const errors=[];admin.on('pageerror',e=>errors.push(e.message));
- await admin.goto(base+'/login');await admin.getByLabel('Email address',{exact:true}).fill('recruiter@qa.invalid');await admin.getByLabel('Password',{exact:true}).fill('Local-QA-Only-57!Password');await admin.getByRole('button',{name:'Sign in',exact:true}).click();await admin.getByRole('heading',{name:'Assessments',exact:true}).waitFor();
+ await admin.goto(base+'/login');await admin.getByLabel('Username or email',{exact:true}).fill('recruiter@qa.invalid');await admin.getByLabel('Password',{exact:true}).fill('Local-QA-Only-57!Password');await admin.getByRole('button',{name:'Sign in',exact:true}).click();await admin.getByRole('heading',{name:'Assessments',exact:true}).waitFor();
  const title=`BROWSER SYNTHETIC Core ${device} ${Date.now()}`,alias=`BROWSER SYNTHETIC Core candidate ${device} ${Date.now()}`;
  const assessment=structuredClone(content);assessment.title=title;assessment.config.code='QA-CORE-CHECK';
  const created=await api(admin,{action:'save',assessment});

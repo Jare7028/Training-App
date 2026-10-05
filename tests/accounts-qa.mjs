@@ -55,13 +55,14 @@ try {
     await page.getByRole('button', { name: 'Accounts & permissions', exact: true }).click();
     await page.getByRole('heading', { name: 'Accounts & permissions', exact: true }).waitFor();
     await page.getByRole('button', { name: 'Add account', exact: true }).click();
-    await page.getByLabel('Full name', { exact: true }).fill('QA account editor');
-    const editorEmail = `accounts-editor-${stamp}@qa.invalid`;
-    await page.getByLabel('Email address', { exact: true }).fill(editorEmail);
+    const editorUsername = `accounts-editor-${stamp}`;
+    await page.getByLabel('Name (optional)', { exact: true }).fill('QA account editor');
+    await page.getByLabel('Username', { exact: true }).fill(editorUsername);
+    await page.getByLabel('Password', { exact: true }).fill(password);
     await page.getByRole('button', { name: 'Create account', exact: true }).click();
-    await page.getByLabel('Account setup link', { exact: true }).waitFor();
-    const setup = await page.getByLabel('Account setup link', { exact: true }).inputValue();
-    const editorAccount = (await accounts(owner)).find(account => account.email === editorEmail);
+    await page.getByRole('dialog').waitFor({state:'hidden'});
+    const editorAccount = (await accounts(owner)).find(account => account.username === editorUsername);
+    const editorEmail = editorAccount.email;
     assert.ok(editorAccount); added.push(editorAccount.id);
     pass('Admin creates an Editor account through the account screen');
     await page.keyboard.press('Escape');
@@ -75,17 +76,15 @@ try {
     await page.screenshot({ path: 'test-results/accounts-mobile.png', fullPage: true });
     pass('Account management fits desktop and mobile');
     const editor = await context(), editorPage = await editor.newPage();
-    await editorPage.goto(setup);
-    assert.equal(new URL(editorPage.url()).origin, base);
-    await editorPage.getByLabel('New password', { exact: true }).fill(password);
-    await editorPage.getByLabel('Confirm password', { exact: true }).fill(password);
-    await editorPage.getByRole('button', { name: 'Save password', exact: true }).click();
-    try { await editorPage.getByRole('heading', { name: 'Assessments', exact: true }).waitFor({ timeout: 10000 }); }
-    catch (error) { await editorPage.screenshot({ path: 'test-results/accounts-setup-failure.png', fullPage: true }); console.log('Setup failure page:', await editorPage.locator('main').innerText()); console.log('Workspace API status:', (await editor.request.get('/api/admin')).status()); throw error; }
+    await editorPage.goto('/login');
+    await editorPage.getByLabel('Username or email',{exact:true}).fill(editorUsername);
+    await editorPage.getByLabel('Password',{exact:true}).fill(password);
+    await editorPage.getByRole('button',{name:'Sign in',exact:true}).click();
+    await editorPage.getByRole('heading',{name:'Assessments',exact:true}).waitFor();
     assert.equal((await (await editor.request.get('/api/admin')).json()).role, 'editor');
-    pass('New account accepts setup link, sets password and opens workspace');
-    const replay = await unsigned.request.get(new URL(setup).pathname + new URL(setup).search, { maxRedirects: 0 });
-    assert.match(replay.headers().location, /\/login\?error=link$/); pass('Account setup link cannot be reused');
+    pass('New username account signs in immediately with the admin-set password');
+    assert.equal(editorAccount.setupPending,false);assert.equal(await page.getByLabel('Account setup link',{exact:true}).count(),0);
+    pass('New accounts require no setup links or email confirmation');
     assert.equal((await editor.request.get('/api/accounts')).status(), 403);
     await post(editor, { action: 'add', email: `forbidden-${stamp}@qa.invalid`, name: 'QA', role: 'admin' }, 403);
     assert.equal(await editorPage.getByRole('button', { name: 'Accounts & permissions', exact: true }).count(), 0);

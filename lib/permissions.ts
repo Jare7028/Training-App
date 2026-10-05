@@ -13,6 +13,7 @@ export function canEdit(role: WorkspaceRole) { return role === 'admin' || role =
 export type WorkspaceAccount = {
     id: string;
     email: string;
+    username?: string;
     name: string;
     role: WorkspaceRole;
     status: 'active' | 'suspended';

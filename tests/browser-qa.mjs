@@ -28,7 +28,7 @@ try {
         const page = await adminContext.newPage(); page.on('pageerror', e => errors.push(e.message));
         page.setDefaultTimeout(15000);
         await page.goto(base + '/login');
-        await page.getByLabel('Email address', { exact: true }).fill('recruiter@qa.invalid');
+        await page.getByLabel('Username or email', { exact: true }).fill('recruiter@qa.invalid');
         await page.getByLabel('Password', { exact: true }).fill('Local-QA-Only-57!Password');
         await audit(page, `${device} login accessibility`);
         await page.getByRole('button', { name: 'Sign in', exact: true }).click();

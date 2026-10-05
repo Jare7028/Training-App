@@ -4,17 +4,22 @@ import { bootstrapAdmin, getAssessmentAdmin } from '@/app/admin-auth';
 import { allRows, firstRow, insertRow, updateRows, type RecordRow } from '@/db/privileged-store';
 import { serviceClient } from '@/lib/supabase/admin';
 import { sameOrigin } from '@/lib/request-origin';
+import { normalizeUsername, usernamePattern } from '@/lib/usernames';
 import { roles, type WorkspaceAccount } from '@/lib/permissions';
 
 export const dynamic = 'force-dynamic';
 const json = (data: unknown, status = 200) => NextResponse.json(data, { status, headers: { 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer' } });
+const password = z.string().min(12).max(256);
+const username = z.string().transform(normalizeUsername).pipe(z.string().regex(usernamePattern));
 const input = z.discriminatedUnion('action', [
+    z.object({ action: z.literal('create'), username, password, name: z.string().trim().max(100).optional(), role: z.enum(roles) }).strict(),
+    z.object({ action: z.literal('activate'), id: z.string().uuid(), password }).strict(),
     z.object({ action: z.literal('add'), email: z.string().trim().toLowerCase().email().max(254), name: z.string().trim().min(1).max(100), role: z.enum(roles) }).strict(),
     z.object({ action: z.literal('update'), id: z.string().uuid(), role: z.enum(roles), status: z.enum(['active', 'suspended']), revision: z.number().int().positive() }).strict(),
     z.object({ action: z.literal('setup-link'), id: z.string().uuid() }).strict(),
 ]);
 function account(row: RecordRow, owner: string): WorkspaceAccount {
-    return { id: String(row.id), email: String(row.email), name: String(row.name), role: row.role as WorkspaceAccount['role'], status: row.status as WorkspaceAccount['status'], revision: Number(row.revision), createdAt: Number(row.created_at), owner: row.id === owner, setupPending: false };
+    return { id: String(row.id), email: String(row.email), username: row.username ? String(row.username) : undefined, name: String(row.name), role: row.role as WorkspaceAccount['role'], status: row.status as WorkspaceAccount['status'], revision: Number(row.revision), createdAt: Number(row.created_at), owner: row.id === owner, setupPending: false };
 }
 function setupPath(token: string, type: string) {
     return `/auth/confirm?${new URLSearchParams({ token_hash: token, type })}`;
@@ -53,9 +58,25 @@ export async function POST(request: Request) {
         let parsed: unknown;
         try { parsed = JSON.parse(raw); } catch { return json({ error: 'Invalid request.' }, 400); }
         const result = input.safeParse(parsed);
-        if (!result.success) return json({ error: 'Enter a valid name, email address and role, or reload the account before updating it.' }, 400);
+        if (!result.success) return json({ error: 'Check the account details. Usernames need 3–40 letters, numbers, dots, hyphens or underscores; passwords need 12–256 characters.' }, 400);
         const body = result.data;
         const admin = serviceClient().auth.admin;
+        if (body.action === 'create') {
+            if (await firstRow('workspace_members', {username:body.username})) return json({error:'This username is already taken. Choose another.'},409);
+            // Auth uses an internal address; the trusted membership maps the login.
+            // No email is sent, and no password is stored in membership or returned.
+            const {data,error} = await admin.createUser({email:`${crypto.randomUUID()}@staff.resolvable.invalid`,password:body.password,email_confirm:true});
+            if (error || !data.user) return json({error:error?.code==='weak_password'?'Choose a stronger password.':'The account could not be created. Please retry.'},error?.code==='weak_password'?400:503);
+            try {
+                await insertRow('workspace_members',{id:data.user.id,workspace_owner:user.workspaceOwner,email:data.user.email!,username:body.username,name:body.name||body.username,role:body.role,status:'active',created_at:Date.now(),revision:1});
+            } catch {
+                const cleanup = await admin.deleteUser(data.user.id);
+                if (cleanup.error) console.error('Account provisioning cleanup failed.');
+                if (await firstRow('workspace_members',{username:body.username})) return json({error:'This username is already taken. Choose another.'},409);
+                return json({error:'The account could not be saved. Please retry.'},503);
+            }
+            return json({ok:true});
+        }
         if (body.action === 'add') {
             if (bootstrapAdmin(body.email)) return json({ error: 'This account is configured as a workspace owner and keeps its separate workspace.' }, 409);
             // Paginate the trusted Auth API; never return its project-wide user
@@ -88,6 +109,16 @@ export async function POST(request: Request) {
         }
         const member = await firstRow('workspace_members', { id: body.id, workspace_owner: user.workspaceOwner });
         if (!member) return json({ error: 'Account not found.' }, 404);
+        if (body.action === 'activate') {
+            if (body.id === user.workspaceOwner || body.id === user.userId) return json({error:'Use your own account settings to change your password.'},403);
+            if (member.status !== 'active') return json({error:'Restore account access before setting a password.'},400);
+            const {data:identity,error:lookupError}=await admin.getUserById(body.id);
+            if (lookupError || !identity.user) return json({error:'Account not found.'},404);
+            if (identity.user.email_confirmed_at) return json({error:'This account is already set up. Its existing password has not been changed.'},409);
+            const {error}=await admin.updateUserById(body.id,{password:body.password,email_confirm:true});
+            if(error) return json({error:error.code==='weak_password'?'Choose a stronger password.':'The password could not be set. Please retry.'},400);
+            return json({ok:true});
+        }
         if (body.action === 'update') {
             if (body.id === user.workspaceOwner || body.id === user.userId)
                 return json({ error: 'You cannot change your own access or the workspace owner’s access.' }, 403);

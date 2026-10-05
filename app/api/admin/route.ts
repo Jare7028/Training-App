@@ -100,7 +100,7 @@ export async function POST(request: Request) {
             if (!decision || typeof decision.stage !== 'string' || !decision.stage.trim() || decision.stage.length > 50 || typeof decision.notes !== 'string' || decision.notes.length > 5000 || !Number.isInteger(decision.revision) || decision.revision < 0 || decision.revision >= 999999999) return json({error:'Choose a hiring stage (up to 50 characters) and notes under 5,000 characters.'},400);
             const row = await firstRow('attempts', {id:String(body.id),owner});
             if (!row) return json({error:'Candidate not found.'},404);
-            const hiring = {stage:decision.stage.trim(),notes:decision.notes.trim(),revision:decision.revision+1,updatedAt:now,updatedBy:user.email};
+            const hiring = {stage:decision.stage.trim(),notes:decision.notes.trim(),revision:decision.revision+1,updatedAt:now,updatedBy:user.loginName};
             const count = await updateRows('attempts',{hiring:JSON.stringify(hiring)},{id:row.id,owner,'hiring->>revision':String(decision.revision)});
             if (!count) return json({error:'The hiring notes changed in another tab. Refresh before saving.'},409);
             return json({hiring});
@@ -176,7 +176,7 @@ export async function POST(request: Request) {
             if (review.outcome !== 'not-scorable' && criteria.some(r => r.key.includes(':') && (typeof review.evidence?.[r.key] !== 'string' || !review.evidence[r.key].trim() || review.evidence[r.key].length > 2000))) return json({ error: 'Add evidence for each writing criterion.' }, 400);
             const previous: Review | null = row.review ? JSON.parse(String(row.review)) : null;
             const { history: oldHistory, ...previousEntry } = previous || {};
-            const clean = { ratings: review.outcome === 'not-scorable' ? {} : Object.fromEntries(criteria.filter(r => typeof review.ratings?.[r.key] === 'number').map(r => [r.key, review.ratings[r.key]])), evidence: Object.fromEntries(criteria.filter(r => typeof review.evidence?.[r.key] === 'string').map(r => [r.key, review.evidence![r.key].trim()])), notes: review.notes.trim(), outcome: review.outcome, reviewedAt: now, reviewer: user.email, history: previous ? [...(oldHistory || []), previousEntry] : [] };
+            const clean = { ratings: review.outcome === 'not-scorable' ? {} : Object.fromEntries(criteria.filter(r => typeof review.ratings?.[r.key] === 'number').map(r => [r.key, review.ratings[r.key]])), evidence: Object.fromEntries(criteria.filter(r => typeof review.evidence?.[r.key] === 'string').map(r => [r.key, review.evidence![r.key].trim()])), notes: review.notes.trim(), outcome: review.outcome, reviewedAt: now, reviewer: user.loginName, history: previous ? [...(oldHistory || []), previousEntry] : [] };
             const r = await updateRows('attempts', { review: JSON.stringify(clean), revision: body.revision + 1 }, { id: body.id, owner, revision: body.revision });
             if (!r)
                 return json({ error: 'This review changed. Reload before saving.' }, 409);
