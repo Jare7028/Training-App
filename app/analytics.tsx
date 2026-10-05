@@ -20,7 +20,7 @@ const shortName = (value: string) => value.length > 18 ? value.slice(0, 17) + 'â
 type Cell = string | number | React.ReactNode;
 
 function DataTable({ headers, rows, label }: { headers: string[]; rows: Cell[][]; label: string }) {
-    return <div className="analytics-table-wrap"><table className="analytics-table" aria-label={label}><thead><tr>{headers.map(header => <th key={header} scope="col">{header}</th>)}</tr></thead><tbody>{rows.map((row, i) => <tr key={i}>{row.map((cell, j) => j === 0 ? <th key={j} scope="row">{cell}</th> : <td key={j} data-label={headers[j]}>{cell}</td>)}</tr>)}</tbody></table></div>;
+    return <div className="analytics-table-wrap" role="region" aria-label={`${label} table`} tabIndex={0}><table className="analytics-table" aria-label={label}><thead><tr>{headers.map(header => <th key={header} scope="col">{header}</th>)}</tr></thead><tbody>{rows.map((row, i) => <tr key={i}>{row.map((cell, j) => j === 0 ? <th key={j} scope="row">{cell}</th> : <td key={j} data-label={headers[j]}>{cell}</td>)}</tr>)}</tbody></table></div>;
 }
 function ChartData({ headers, rows, label }: { headers: string[]; rows: Cell[][]; label: string }) {
     return <details className="analytics-chart-data"><summary>View data</summary><DataTable headers={headers} rows={rows} label={label}/></details>;
