@@ -7,7 +7,7 @@ import urllib.error
 import urllib.request
 
 PROJECT = 'nzoumetzzfvxavxdmjis'
-MIGRATIONS = {'candidate_hiring': '20261003201000', 'unsaved_previews': '20261003220000'}
+MIGRATIONS = {'candidate_hiring': '20261003201000', 'unsaved_previews': '20261003220000', 'account_usernames': '20261005090000'}
 NAME = os.environ.get('MIGRATION', 'candidate_hiring')
 if NAME not in MIGRATIONS:
     sys.exit('Unsupported migration target.')
@@ -36,6 +36,13 @@ def query(sql):
 
 
 def inspect():
+    if NAME == 'account_usernames':
+        return query(f"""select
+            exists(select 1 from supabase_migrations.schema_migrations where version='{VERSION}' and name='{NAME}') as recorded,
+            exists(select 1 from information_schema.columns where table_schema='public' and table_name='workspace_members' and column_name='username' and data_type='text') as username_ready,
+            exists(select 1 from pg_index where indexrelid=to_regclass('public.workspace_username_unique') and indisunique and indisvalid) as unique_ready,
+            exists(select 1 from pg_constraint where conrelid='public.workspace_members'::regclass and conname='workspace_username_valid') as constraint_ready
+            """)[0]
     if NAME == 'unsaved_previews':
         return query(f"""select
             exists(select 1 from supabase_migrations.schema_migrations where version='{VERSION}' and name='{NAME}') as recorded,
@@ -61,7 +68,7 @@ def main():
                 sys.exit('Recorded migration has incomplete schema; inspect before repair.')
             print(NAME + ' migration already recorded; no SQL replayed.')
         else:
-            if (NAME == 'candidate_hiring' and (before['column_ready'] or before['constraint_ready'])) or (NAME == 'unsaved_previews' and before['nullable_ready']):
+            if (NAME == 'candidate_hiring' and (before['column_ready'] or before['constraint_ready'])) or (NAME == 'unsaved_previews' and before['nullable_ready']) or (NAME == 'account_usernames' and (before['username_ready'] or before['unique_ready'] or before['constraint_ready'])):
                 sys.exit('Unrecorded migration schema exists; inspect before repair.')
             sql = FILE.read_text().strip()
             if not sql.startswith('begin;') or not sql.endswith('commit;'):
