@@ -361,3 +361,9 @@
 
 [data-slot="table-container"]:focus-visible { outline: 3px solid var(--ring); outline-offset: -3px; }
 @media (max-width: 767px) { .candidate-table-panel tbody > tr > td[colspan] { grid-column: 1 / -1; } }
+
+.general-registration { max-width: 560px; }
+.general-registration form { display: grid; gap: 20px; }
+.general-links-list { display: grid; gap: 12px; }
+.general-link-row { border: 1px solid var(--border); padding: 12px; border-radius: 12px; display: grid; gap: 12px; }
+.general-link-row small { display: block; margin-top: 4px; }

@@ -89,6 +89,9 @@ export default function Admin({ tenantId, tenantName, isGlobalAdmin, businesses 
     const [discard, setDiscard] = useState(false);
     const [busy, setBusy] = useState(false);
     const [create, setCreate] = useState(false);
+    const [linkNow,setLinkNow]=useState(()=>Date.now());
+    const [generalTest,setGeneralTest]=useState<Assessment|null>(null);
+    const [generalLinks,setGeneralLinks]=useState<{id:string;assessmentId:string;createdAt:number;expiresAt:number;revoked:boolean;path:string}[]>([]);
     const [linkTest, setLinkTest] = useState<Assessment | null>(null);
     const [alias, setAlias] = useState('');
     const [link, setLink] = useState('');
@@ -106,6 +109,7 @@ export default function Admin({ tenantId, tenantName, isGlobalAdmin, businesses 
         const r = await fetch('/api/admin', { headers: { 'X-Tenant-Id': tenantId } });
         const d = await r.json() as {
             error: string;
+            generalLinks: {id:string;assessmentId:string;createdAt:number;expiresAt:number;revoked:boolean;path:string}[];
             presets: TestModule[];
             library: SavedModule[];
             assessments: Assessment[];
@@ -115,6 +119,8 @@ export default function Admin({ tenantId, tenantName, isGlobalAdmin, businesses 
         };
         if (!r.ok)
             throw new Error(d.error);
+        setLinkNow(Date.now());
+        setGeneralLinks(d.generalLinks);
         setPresets(d.presets);
         setLibrary(d.library);
         setTests(d.assessments);
@@ -183,8 +189,14 @@ export default function Admin({ tenantId, tenantName, isGlobalAdmin, businesses 
         if (!linkTest) return;
         const d = await request({ action: 'link', id: linkTest.id, alias, ...(linkTest.config?.flexible ? { extraSeconds } : {}) }); setLink(window.location.origin + d.path); await load(); toast.success('Candidate link created.');
     });
-    const copy = async () => { try {
-        await navigator.clipboard.writeText(link);
+    const createGeneralLink = () => run(async()=>{
+        if(!generalTest)return;
+        const d=await request({action:'general-link',id:generalTest.id});
+        setLink(window.location.origin+d.path);await load();toast.success('General link created.');
+    });
+    const closeGeneralLink=(id:string)=>run(async()=>{await request({action:'close-general-link',id});await load();toast.success('General link closed.');});
+    const copy = async (value=link) => { try {
+        await navigator.clipboard.writeText(value);
         toast.success('Link copied.');
     }
     catch {
@@ -219,7 +231,7 @@ export default function Admin({ tenantId, tenantName, isGlobalAdmin, businesses 
  </TableRow></TableHeader><TableBody>{tests.map(t => <TableRow key={t.id}>
     <th scope="row" className="assessment-name"><span>{t.title}</span>{t.status === 'draft' && <Status value="draft"/>}</th>
     <TableCell className="assessment-duration" data-label="Duration">{formatTime(workDuration(t))}</TableCell><TableCell className="assessment-modules" data-label="Modules">{t.modules.length}</TableCell>
-    <TableCell className="assessment-actions"><div>{editable ? <><Button className="candidate-link-action" disabled={t.status !== 'ready'} onClick={() => candidateLink(t)}>Create candidate link</Button><Button variant="outline" disabled={busy || t.status !== 'ready'} onClick={() => preview(t)}>Preview test</Button><Button variant="outline" aria-label="Edit assessment" onClick={() => openEdit(t)}>Edit</Button><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label={`More actions for ${t.title}`}><MoreHorizontal size={18}/></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={()=>duplicateAssessment(t)}><Copy size={16}/>Duplicate assessment</DropdownMenuItem></DropdownMenuContent></DropdownMenu></> : <Button variant="outline" onClick={() => setInspecting(t)}>View assessment</Button>}</div></TableCell>
+    <TableCell className="assessment-actions"><div>{editable ? <><Button className="candidate-link-action" disabled={t.status !== 'ready'} onClick={() => candidateLink(t)}>Create candidate link</Button><Button variant="outline" disabled={busy || t.status !== 'ready'} onClick={()=>{setGeneralTest(t);setLink('');}}>General links</Button><Button variant="outline" disabled={busy || t.status !== 'ready'} onClick={() => preview(t)}>Preview test</Button><Button variant="outline" aria-label="Edit assessment" onClick={() => openEdit(t)}>Edit</Button><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label={`More actions for ${t.title}`}><MoreHorizontal size={18}/></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={()=>duplicateAssessment(t)}><Copy size={16}/>Duplicate assessment</DropdownMenuItem></DropdownMenuContent></DropdownMenu></> : <Button variant="outline" onClick={() => setInspecting(t)}>View assessment</Button>}</div></TableCell>
  </TableRow>)}</TableBody></Table></div>}
 
  </>}
@@ -236,7 +248,8 @@ export default function Admin({ tenantId, tenantName, isGlobalAdmin, businesses 
  <Dialog open={!!inspecting} onOpenChange={value => { if (!value) setInspecting(null); }}><DialogContent className="module-dialog assessment-details"><DialogHeader><DialogTitle>{inspecting?.title}</DialogTitle><DialogDescription>{inspecting?.description || 'Saved assessment content'} · {inspecting ? formatTime(workDuration(inspecting)) : ''}</DialogDescription></DialogHeader>{inspecting?.modules.map(module => <section className="module-preview" key={module.id}><h2>{module.title}</h2><p>{module.instructions}</p>{module.context && <pre className="policy-card">{module.context}</pre>}{module.questions?.map(question => <div className="preview-question" key={question.id}><h3>{question.prompt}</h3><ol>{question.options.map((option, index) => <li key={index}>{option}{index === question.correct ? ' (answer key)' : ''}</li>)}</ol><p>{question.explanation}</p></div>)}{module.passage && <div className="typing-passage">{module.passage}</div>}{module.prompt && <p>{module.prompt}</p>}</section>)}</DialogContent></Dialog>
  <Dialog open={create} onOpenChange={setCreate}><DialogContent className="create-dialog"><DialogHeader><DialogTitle>Create an assessment</DialogTitle><DialogDescription className="sr-only">Choose a starting point.</DialogDescription></DialogHeader><>{coreTemplate && <button className="creation-option" onClick={()=>{openEdit({...clone(coreTemplate),id:'',revision:0,status:'draft',modules:coreTemplate.modules.map(copyModule)});setCreate(false);}}><span className="test-glyph"><MessageSquare/></span><div><strong>{coreTemplate.title}</strong><small>{formatTime(workDuration(coreTemplate))} · {coreTemplate.modules.length} modules</small></div></button>}</>{!coreTemplate && <button className="creation-option" onClick={() => { const a: Assessment = { id: '', title: 'Customer support essentials', description: 'A short, practical work sample for written customer-service roles.', status: 'draft', modules: kinds.map(template), updatedAt: Date.now(), revision: 0 }; openEdit(a); setCreate(false); }}><span className="test-glyph"><MessageSquare /></span><div><strong>Customer support essentials</strong><small>{formatTime(presets.reduce((total,m)=>total+m.seconds,0))} · {kinds.length} modules</small></div></button>}<button className="creation-option" onClick={() => { openEdit({ id: '', title: 'Untitled assessment', description: '', status: 'draft', modules: [], updatedAt: Date.now(), revision: 0 }); setCreate(false); }}><span className="test-glyph"><Plus /></span><div><strong>Start from scratch</strong></div></button></DialogContent></Dialog>
  <Dialog open={createModule} onOpenChange={setCreateModule}><DialogContent className="module-dialog"><DialogHeader><DialogTitle>Create a module</DialogTitle><DialogDescription className="sr-only">Choose a module type.</DialogDescription></DialogHeader><ModuleTypePicker onChoose={kind => { editModule(blankModule(kind)); setCreateModule(false); }}/></DialogContent></Dialog>
- <Dialog open={!!linkTest} onOpenChange={v => { if (!v) setLinkTest(null); }}><DialogContent><DialogHeader><DialogTitle>Create candidate link</DialogTitle><DialogDescription>{linkTest?.title} · {linkTest ? formatTime(workDuration(linkTest)) : ''}</DialogDescription></DialogHeader>{!link ? <><Field label="Candidate name or reference"><Input value={alias} maxLength={80} onChange={e => setAlias(e.target.value)}/></Field><>{linkTest?.config?.flexible && <Field label="Agreed extra time (seconds)"><Input type="number" min={0} max={86400} value={extraSeconds} onChange={e=>setExtraSeconds(Number(e.target.value))}/></Field>}</><Button disabled={busy || !alias.trim()} onClick={createLink}>Create candidate link</Button></> : <><Field label="Candidate assessment link"><Input value={link} readOnly onFocus={e => e.target.select()}/></Field><div className="button-row"><Button variant="outline" onClick={copy}><Copy size={16}/>Copy link</Button><Button asChild><a href={link} target="_blank" rel="noopener noreferrer"><ExternalLink size={16}/>Open candidate view</a></Button></div></>}</DialogContent></Dialog>
+ <Dialog open={!!generalTest} onOpenChange={open=>{if(!open){setGeneralTest(null);setLink('');}}}><DialogContent><DialogHeader><DialogTitle>General links</DialogTitle><DialogDescription>{generalTest?.title}</DialogDescription></DialogHeader><p>Candidates enter their name before starting.</p><Button disabled={busy} onClick={createGeneralLink}>Create general link</Button>{link&&<Field label="General assessment link"><Input readOnly value={link} onFocus={event=>event.target.select()}/></Field>}<div className="general-links-list">{generalLinks.filter(item=>item.assessmentId===generalTest?.id).map(item=><div className="general-link-row" key={item.id}><div><strong>{item.revoked?'Closed':item.expiresAt<=linkNow?'Expired':'Active'}</strong><small>Created {fmtDate(item.createdAt)} · expires {fmtDate(item.expiresAt)}</small></div><div className="button-row">{!item.revoked&&item.expiresAt>linkNow&&<><Button variant="outline" disabled={busy} onClick={()=>void copy(window.location.origin+item.path)}>Copy link</Button><Button variant="outline" disabled={busy} onClick={()=>closeGeneralLink(item.id)}>Close link</Button></>}</div></div>)}</div></DialogContent></Dialog>
+ <Dialog open={!!linkTest} onOpenChange={v => { if (!v) setLinkTest(null); }}><DialogContent><DialogHeader><DialogTitle>Create candidate link</DialogTitle><DialogDescription>{linkTest?.title} · {linkTest ? formatTime(workDuration(linkTest)) : ''}</DialogDescription></DialogHeader>{!link ? <><Field label="Candidate name or reference"><Input value={alias} maxLength={80} onChange={e => setAlias(e.target.value)}/></Field><>{linkTest?.config?.flexible && <Field label="Agreed extra time (seconds)"><Input type="number" min={0} max={86400} value={extraSeconds} onChange={e=>setExtraSeconds(Number(e.target.value))}/></Field>}</><Button disabled={busy || !alias.trim()} onClick={createLink}>Create candidate link</Button></> : <><Field label="Candidate assessment link"><Input value={link} readOnly onFocus={e => e.target.select()}/></Field><div className="button-row"><Button variant="outline" onClick={()=>void copy()}><Copy size={16}/>Copy link</Button><Button asChild><a href={link} target="_blank" rel="noopener noreferrer"><ExternalLink size={16}/>Open candidate view</a></Button></div></>}</DialogContent></Dialog>
  <AlertDialog open={discard} onOpenChange={setDiscard}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle><AlertDialogDescription>Unsaved changes will be lost.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Keep editing</AlertDialogCancel><AlertDialogAction onClick={() => { setEditing(null); setDiscard(false); }}>Discard changes</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
  {comparing&&<CandidateComparison open candidates={compareCandidates} onClose={()=>setComparing(false)} onReview={a=>{setComparing(false);setActive(a);}}/>}
  <Sheet open={!!active} onOpenChange={v => { if (!v)
@@ -248,7 +261,7 @@ function ModuleTypePicker({onChoose}: {onChoose:(kind: typeof customModuleKinds[
 }
 function Builder({ assessment: a, setAssessment, onClose, onSave, onPreview, busy, library, presets, moduleOnly }: {
     library: SavedModule[];
-    presets: TestModule[];
+            presets: TestModule[];
     moduleOnly: boolean;
     assessment: Assessment;
     setAssessment: (a: Assessment) => void;

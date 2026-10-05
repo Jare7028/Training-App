@@ -35,7 +35,7 @@ if (process.argv[2] === 'setup') {
         const { data, error } = await admin.from('assessments').select('id,title').eq('owner', owner);
         if (error) throw new Error('Unable to inspect local QA records.');
         const ids = data.filter(r => /^(QA|WORKFLOW|BROWSER|SETTINGS) SYNTHETIC\b/.test(r.title)).map(r => r.id);
-        if (ids.length) for (const table of ['attempts', 'preview_attempts', 'assessments']) {
+        if (ids.length) for (const table of ['attempts', 'preview_attempts', 'general_links', 'assessments']) {
             const { error } = await admin.from(table).delete().eq('owner',owner).in(table === 'assessments' ? 'id' : 'assessment_id',ids);
             if (error) throw new Error('Unable to remove local QA records.');
         }

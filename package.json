@@ -38,7 +38,8 @@
     "test:candidate-tools": "node tests/candidate-tools-metrics.mjs && node tests/candidate-tools.mjs",
     "test:passwords": "node tests/account-passwords.mjs",
     "test:answer-keys": "node tests/answer-keys.mjs",
-    "test:mobile": "node tests/mobile-layout.mjs"
+    "test:mobile": "node tests/mobile-layout.mjs",
+    "test:general-links": "node tests/general-links.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

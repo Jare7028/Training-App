@@ -18,7 +18,7 @@ export async function GET(request: Request) {
         if (user && requestedTenant && requestedTenant !== user.tenantId) return json({ error: 'The selected business changed. Reload before continuing.' }, 409);
         if (!user)
             return json({ error: 'Sign in to open your assessment workspace.' }, 401);
-        const [tests, rows, library] = await Promise.all([allRows('assessments', { owner: user.workspaceOwner }, { order: 'updated_at' }), allRows('attempts', { owner: user.workspaceOwner, demo: 0 }, { order: 'created_at', complete: true }), allRows('modules', { owner: user.workspaceOwner }, { order: 'updated_at' })]);
+        const [tests, rows, library, links] = await Promise.all([allRows('assessments', { owner: user.workspaceOwner }, { order: 'updated_at' }), allRows('attempts', { owner: user.workspaceOwner, demo: 0 }, { order: 'created_at', complete: true }), allRows('modules', { owner: user.workspaceOwner }, { order: 'updated_at' }), allRows('general_links', {owner:user.workspaceOwner}, {order:'created_at',complete:true})]);
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
             if (row.status === 'in-progress' && Number(row.deadline) + 2500 <= Date.now()) {
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
                     rows[i] = (await firstRow('attempts', { id: row.id, owner: user.workspaceOwner })) || row;
             }
         }
-        return json({ presets: Object.keys(kindLabels).filter(k => k !== 'questions').map(k => template(k as ModuleKind)), assessments: tests.map(assessment), attempts: rows.map(attempt), library: library.map(r => ({ id: r.id, module: JSON.parse(String(r.content)), revision: r.revision, updatedAt: r.updated_at })), user: user.displayName, role: user.role, userId: user.userId });
+        return json({ generalLinks: canEdit(user.role) ? links.map(r=>({id:r.id,assessmentId:r.assessment_id,createdAt:r.created_at,expiresAt:r.expires_at,revoked:!!r.revoked,path:`/join/${r.share_token}`})) : [], presets: Object.keys(kindLabels).filter(k => k !== 'questions').map(k => template(k as ModuleKind)), assessments: tests.map(assessment), attempts: rows.map(attempt), library: library.map(r => ({ id: r.id, module: JSON.parse(String(r.content)), revision: r.revision, updatedAt: r.updated_at })), user: user.displayName, role: user.role, userId: user.userId });
     }
     catch (e) {
         console.error('Admin load', e);
@@ -105,6 +105,11 @@ export async function POST(request: Request) {
             if (!count) return json({error:'The hiring notes changed in another tab. Refresh before saving.'},409);
             return json({hiring});
         }
+        if (body.action === 'close-general-link') {
+            const count=await updateRows('general_links',{revoked:1},{id:String(body.id),owner});
+            if(!count)return json({error:'General link not found.'},404);
+            return json({ok:true});
+        }
         if (body.action === 'revoke') {
             const update = await updateRows('attempts', { revoked: 1, revision: body.revision + 1 }, { id: String(body.id), owner, revision: body.revision });
             if (!update) return json({ error: 'Attempt not found or changed. Refresh before retrying.' }, 409);
@@ -133,9 +138,10 @@ export async function POST(request: Request) {
             await insertRow('assessments', { id, owner, title: a.title.trim(), description: a.description, status: a.status, modules: JSON.stringify(a.modules), config: a.config ? JSON.stringify(a.config) : null, updated_at: now, revision: 1 });
             return json({ id });
         }
-        if (body.action === 'link' || body.action === 'preview' || body.action === 'preview-unsaved') {
-            const preview = body.action !== 'link';
-            if (!preview && (typeof body.alias !== 'string' || !body.alias.trim() || body.alias.length > 80))
+        if (body.action === 'general-link' || body.action === 'link' || body.action === 'preview' || body.action === 'preview-unsaved') {
+            const general = body.action === 'general-link';
+            const preview = !general && body.action !== 'link';
+            if (!preview && !general && (typeof body.alias !== 'string' || !body.alias.trim() || body.alias.length > 80))
                 return json({ error: 'Add a candidate name or reference (up to 80 characters).' }, 400);
             const unsaved = body.action === 'preview-unsaved';
             const sourceId = unsaved ? body.assessment?.id : body.id;
@@ -154,6 +160,10 @@ export async function POST(request: Request) {
                 return json({ error: 'Mark the test ready before creating a link.' }, 400);
             const id = crypto.randomUUID();
             const token = Array.from(crypto.getRandomValues(new Uint8Array(32)), byte => byte.toString(16).padStart(2, '0')).join('');
+            if (general) {
+                await insertRow('general_links',{id,owner,assessment_id:row!.id,share_token:token,snapshot:JSON.stringify(test),created_at:now,expires_at:now+(test.config?.linkExpiryDays??7)*86400000,revoked:0});
+                return json({id,path:`/join/${token}`});
+            }
             const table = preview ? 'preview_attempts' : 'attempts';
             await deleteExpiredPreviews(owner, now);
             await insertRow(table, { id, owner, assessment_id: row?.id ?? null, token_hash: await hashToken(token), alias: preview ? 'Preview' : body.alias.trim(), snapshot: JSON.stringify(test), status: 'not-started', created_at: now, answers: '{}', demo: 0, revision: 1, expires_at: now + (preview ? 3600000 : (test.config?.linkExpiryDays ?? 7) * 86400000), revoked: 0 });

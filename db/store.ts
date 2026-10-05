@@ -3,7 +3,7 @@ import { authClient } from '@/lib/supabase/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type RecordRow = Record<string, unknown>;
-type Table = 'assessments' | 'attempts' | 'modules' | 'preview_attempts' | 'workspace_members';
+type Table = 'assessments' | 'attempts' | 'modules' | 'preview_attempts' | 'workspace_members' | 'general_links';
 const jsonColumns = new Set(['modules', 'content', 'snapshot', 'answers', 'result', 'review', 'config', 'hiring']);
 
 // Normalize serialized assessment snapshots at this boundary; PostgreSQL stores
