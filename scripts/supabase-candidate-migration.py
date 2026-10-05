@@ -7,7 +7,7 @@ import urllib.error
 import urllib.request
 
 PROJECT = 'nzoumetzzfvxavxdmjis'
-MIGRATIONS = {'candidate_hiring': '20261003201000', 'unsaved_previews': '20261003220000', 'account_usernames': '20261005090000'}
+MIGRATIONS = {'candidate_hiring': '20261003201000', 'unsaved_previews': '20261003220000', 'account_usernames': '20261005090000', 'general_links': '20261005120000'}
 NAME = os.environ.get('MIGRATION', 'candidate_hiring')
 if NAME not in MIGRATIONS:
     sys.exit('Unsupported migration target.')
@@ -36,6 +36,17 @@ def query(sql):
 
 
 def inspect():
+    if NAME == 'general_links':
+        return query(f"""select
+            exists(select 1 from supabase_migrations.schema_migrations where version='{VERSION}' and name='{NAME}') as recorded,
+            exists(select 1 from pg_class where oid=to_regclass('public.general_links') and relrowsecurity) as isolation_ready,
+            exists(select 1 from information_schema.columns where table_schema='public' and table_name='attempts' and column_name='general_link_id') as column_ready,
+            to_regprocedure('public.register_general_candidate(text,text,text)') is not null as function_ready,
+            case when to_regprocedure('public.register_general_candidate(text,text,text)') is not null then
+              not has_function_privilege('anon','public.register_general_candidate(text,text,text)','execute') and
+              not has_function_privilege('authenticated','public.register_general_candidate(text,text,text)','execute') and
+              has_function_privilege('service_role','public.register_general_candidate(text,text,text)','execute') else false end as grants_ready
+            """)[0]
     if NAME == 'account_usernames':
         return query(f"""select
             exists(select 1 from supabase_migrations.schema_migrations where version='{VERSION}' and name='{NAME}') as recorded,
@@ -68,7 +79,7 @@ def main():
                 sys.exit('Recorded migration has incomplete schema; inspect before repair.')
             print(NAME + ' migration already recorded; no SQL replayed.')
         else:
-            if (NAME == 'candidate_hiring' and (before['column_ready'] or before['constraint_ready'])) or (NAME == 'unsaved_previews' and before['nullable_ready']) or (NAME == 'account_usernames' and (before['username_ready'] or before['unique_ready'] or before['constraint_ready'])):
+            if (NAME == 'general_links' and (before['isolation_ready'] or before['column_ready'] or before['function_ready'])) or (NAME == 'candidate_hiring' and (before['column_ready'] or before['constraint_ready'])) or (NAME == 'unsaved_previews' and before['nullable_ready']) or (NAME == 'account_usernames' and (before['username_ready'] or before['unique_ready'] or before['constraint_ready'])):
                 sys.exit('Unrecorded migration schema exists; inspect before repair.')
             sql = FILE.read_text().strip()
             if not sql.startswith('begin;') or not sql.endswith('commit;'):
