@@ -49,7 +49,7 @@ try {
             await editor.getByLabel('Question', { exact: true }).fill(`Custom decision ${i+1}: which action follows our process?`);
             await editor.getByRole('button', { name: 'Add answer option', exact: true }).click();
             for (let n=0;n<3;n++) await editor.getByLabel(`Question ${i+1}, option ${n+1}`, { exact: true }).fill(`Decision ${i+1}, action ${n+1}`);
-            await editor.getByRole('radio').nth(correct).check();
+            await editor.getByLabel(`Correct answer for question ${i+1}`, { exact: true }).selectOption(String(correct));
             await editor.getByLabel('Answer explanation', { exact: true }).fill(`Our process requires action ${correct+1} for decision ${i+1}.`);
         }
 
