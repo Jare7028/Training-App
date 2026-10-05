@@ -358,3 +358,6 @@
   .rating-choice { min-width: 44px; min-height: 44px; }
 }
 @media (max-width: 1023px) { .rating-options { flex-wrap: wrap; } }
+
+[data-slot="table-container"]:focus-visible { outline: 3px solid var(--ring); outline-offset: -3px; }
+@media (max-width: 767px) { .candidate-table-panel tbody > tr > td[colspan] { grid-column: 1 / -1; } }
