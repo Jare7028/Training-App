@@ -1,0 +1,335 @@
+{
+  "id": "",
+  "title": "Customer Service Essentials",
+  "description": "Customer support judgement, typing and written responses.",
+  "status": "ready",
+  "revision": 0,
+  "updatedAt": 0,
+  "modules": [
+    {
+      "id": "c236bea0-7d42-42e0-bfb4-20dac536179b",
+      "code": "CS-ESS-01-v1.0",
+      "version": 1,
+      "kind": "writing",
+      "title": "Respond to an urgent delayed order",
+      "seconds": 120,
+      "instructions": "Write the response you would send to the customer.",
+      "context": "Customer message:\n“My order was supposed to arrive 3 days ago and I still haven’t received it. This is ridiculous. I need it urgently.”",
+      "prompt": "How would you respond?",
+      "rubric": [
+        {
+          "id": "empathy",
+          "title": "Urgent order · Empathy",
+          "help": "Score the evidence in this response. Accept natural wording; do not require the example answer.",
+          "max": 3,
+          "anchors": [
+            "Dismisses the concern or blames the customer.",
+            "Uses a generic apology without recognising the concern.",
+            "Acknowledges the delay or inconvenience respectfully.",
+            "Specifically acknowledges the delay and urgency without blame or an exaggerated apology."
+          ]
+        },
+        {
+          "id": "ownership",
+          "title": "Urgent order · Ownership and next step",
+          "help": "Score the evidence in this response. Accept natural wording; do not require the example answer.",
+          "max": 3,
+          "anchors": [
+            "Pushes the customer away or offers no next step.",
+            "Promises vaguely to look into it.",
+            "Takes responsibility and explains a relevant investigation step.",
+            "Owns the investigation, explains a concrete next step and keeps responsibility for updating the customer."
+          ]
+        },
+        {
+          "id": "tone",
+          "title": "Urgent order · Professional tone",
+          "help": "Score the evidence in this response. Accept natural wording; do not require the example answer.",
+          "max": 3,
+          "anchors": [
+            "Confrontational, dismissive or inappropriate.",
+            "Abrupt or defensive despite some useful content.",
+            "Polite and professional throughout.",
+            "Calm, respectful and customer-friendly while keeping the response direct."
+          ]
+        },
+        {
+          "id": "language",
+          "title": "Urgent order · Written English",
+          "help": "Assess clarity and meaning. Accept regional spelling and contractions; do not double-penalise a minor typo.",
+          "max": 3,
+          "anchors": [
+            "Errors prevent the customer from understanding the message.",
+            "Recurring grammar, spelling or punctuation errors require rereading or leave important meaning unclear.",
+            "Clear on first reading, with minor errors that do not change the meaning.",
+            "Clear, concise sentences with controlled spelling, grammar and punctuation."
+          ]
+        },
+        {
+          "id": "judgement",
+          "title": "Urgent order · Accuracy and judgement",
+          "help": "Score the evidence in this response. Accept natural wording; do not require the example answer.",
+          "max": 3,
+          "anchors": [
+            "Invents a confirmed delivery, refund or resolution.",
+            "Makes unsupported promises or assumptions.",
+            "Avoids inventing a resolution and proposes a relevant check.",
+            "Distinguishes what is known from what needs checking, asks only for necessary missing information and avoids unsupported guarantees."
+          ]
+        }
+      ],
+      "example": "I’m sorry your order is three days late, especially when you need it urgently. Please send your order number so I can check the tracking and investigate the delay. I’ll take ownership of this and keep you updated while I find out what has happened and what we can do next."
+    },
+    {
+      "id": "830b3441-8cf7-482d-8d11-7dad6ce1b3f8",
+      "code": "CS-ESS-02-v1.0",
+      "version": 1,
+      "kind": "questions",
+      "title": "Customer support judgement",
+      "seconds": 120,
+      "instructions": "Choose the best response.",
+      "questions": [
+        {
+          "id": "346bba68-9b1c-4d2d-97e7-83ffabfb73bc",
+          "prompt": "A customer asks a question and you don’t immediately know the answer. What would you do?",
+          "options": [
+            "Tell the customer you don’t know and ask them to contact someone else",
+            "Give the customer an answer based on what you think is correct",
+            "Check the available information/SOP and investigate before responding",
+            "Escalate immediately to a manager"
+          ],
+          "optionIds": [
+            "b34a6922-365c-4834-9b46-3eb0631b9b51",
+            "470bdf74-d5bc-4a39-a4b4-c93191ea1522",
+            "d9021131-c01f-463e-a9e0-e668f8aa9703",
+            "6d72913c-609f-4129-8d45-6898475fe32e"
+          ],
+          "correct": 2,
+          "correctOptionId": "d9021131-c01f-463e-a9e0-e668f8aa9703",
+          "explanation": "Check reliable information and investigate before responding rather than guessing or escalating without investigation."
+        },
+        {
+          "id": "6e98b5d9-603c-43f9-8bb1-74e6095c12ab",
+          "prompt": "A customer has already explained their issue, but you need some time to investigate. What should you do?",
+          "options": [
+            "Leave the customer waiting until you have the answer",
+            "Tell them “checking” and come back when you are finished",
+            "Acknowledge the issue, explain that you are investigating and keep them updated",
+            "Escalate immediately"
+          ],
+          "optionIds": [
+            "cead9125-bca9-4c1d-ae75-5a0f49c501bd",
+            "6ef5cbcf-ecfa-412e-a163-791d2c9510c8",
+            "21b0ced3-0303-44ae-8deb-5fe2976a050c",
+            "4f7e7768-8dff-4572-9d13-7e24a93b1192"
+          ],
+          "correct": 2,
+          "correctOptionId": "21b0ced3-0303-44ae-8deb-5fe2976a050c",
+          "explanation": "Acknowledge the issue, explain the investigation and keep the customer informed while they wait."
+        },
+        {
+          "id": "811da9b4-62b2-4463-8137-3907401660ca",
+          "prompt": "A customer is angry because they have contacted us twice already and had to explain the same problem again. What is the most important thing to do?",
+          "options": [
+            "Ask them to explain everything again",
+            "Tell them it was not your fault",
+            "Acknowledge their frustration, take ownership and review the previous information before asking unnecessary questions",
+            "Transfer them to another agent"
+          ],
+          "optionIds": [
+            "fa89a762-d992-4dc4-878d-2a93f7cad781",
+            "23d8682c-6b0c-408a-b1d6-6eb78c525cc5",
+            "69b29fc3-92f3-4412-8da7-422b89ecfc37",
+            "9cb4ee96-aea7-4ff5-be5d-7152a7d247cc"
+          ],
+          "correct": 2,
+          "correctOptionId": "69b29fc3-92f3-4412-8da7-422b89ecfc37",
+          "explanation": "Review the existing information and take ownership so the customer does not have to repeat themselves unnecessarily."
+        },
+        {
+          "id": "0c2b3763-faee-4e6f-8216-c51451a5dc32",
+          "prompt": "You have several customers waiting at the same time. What should you do?",
+          "options": [
+            "Focus on one customer until their issue is completely resolved",
+            "Respond to all customers, prioritise appropriately and keep waiting customers updated",
+            "Close the customers who are taking too long to respond",
+            "Escalate the conversations to your manager"
+          ],
+          "optionIds": [
+            "d49897d4-097d-4da3-885a-41f58f35335f",
+            "ebdea0fc-7a03-40ed-91a3-f6507178fee6",
+            "54a27a86-b9b6-4479-b913-326f92d34154",
+            "a60252ac-7004-4cd6-b122-ce71c22f6221"
+          ],
+          "correct": 1,
+          "correctOptionId": "ebdea0fc-7a03-40ed-91a3-f6507178fee6",
+          "explanation": "Acknowledge waiting customers, prioritise appropriately and keep them updated rather than ignoring or closing conversations."
+        }
+      ],
+      "sequential": false
+    },
+    {
+      "id": "f811c228-1f5d-41de-8506-c1fa457ddb67",
+      "code": "CS-ESS-03-v1.0",
+      "version": 1,
+      "kind": "typing",
+      "title": "Typing accuracy and speed",
+      "seconds": 60,
+      "typingSeconds": 60,
+      "typingMode": "prefix-v1",
+      "finishTypingEarly": false,
+      "allowPaste": false,
+      "instructions": "Copy the passage as accurately as you can.",
+      "practice": "The parcel is ready for collection.",
+      "passage": "The warehouse opens at 8:30 each weekday. Parcels are checked against the order list before they are packed, and the delivery label is attached to the outside of each box. Items waiting for collection are kept on the marked shelves near the loading area. The morning team records the number of parcels on the collection sheet, then passes it to the afternoon team. If a label is damaged, the parcel is set aside until a replacement has been printed. At the end of the day, the remaining boxes are counted and the shelves are checked again. Each completed collection is recorded with its date, reference number and parcel count so that the next shift has an accurate record."
+    },
+    {
+      "id": "1a23e53b-c866-47a8-941f-fd97a8342093",
+      "code": "CS-ESS-04-v1.0",
+      "version": 1,
+      "kind": "writing",
+      "title": "Rewrite a customer response",
+      "seconds": 90,
+      "instructions": "",
+      "context": "“We already told you this is not our problem you need to contact the courier.”",
+      "prompt": "Rewrite the following response so it is professional and customer-friendly.",
+      "rubric": [
+        {
+          "id": "tone",
+          "title": "Rewrite · Professional tone",
+          "help": "Score the evidence in this response. Accept natural wording; do not require the example answer.",
+          "max": 3,
+          "anchors": [
+            "Confrontational, dismissive or inappropriate.",
+            "Abrupt or defensive despite some useful content.",
+            "Polite and professional throughout.",
+            "Calm, respectful and customer-friendly while keeping the response direct."
+          ]
+        },
+        {
+          "id": "empathy",
+          "title": "Rewrite · Customer-friendly wording",
+          "help": "Score the evidence in this response. Accept natural wording; do not require the example answer.",
+          "max": 3,
+          "anchors": [
+            "Retains blame, dismissal or “not our problem” wording.",
+            "Removes some harsh wording but still dismisses the concern.",
+            "Acknowledges the difficulty and uses respectful wording.",
+            "Acknowledges the difficulty naturally and presents the next step helpfully rather than distancing the business."
+          ]
+        },
+        {
+          "id": "next-step",
+          "title": "Rewrite · Useful and accurate next step",
+          "help": "Score the evidence in this response. Accept natural wording; do not require the example answer.",
+          "max": 3,
+          "anchors": [
+            "Offers no usable next step or invents an outcome.",
+            "Only tells the customer to contact someone else.",
+            "Explains the courier contact step clearly and politely without unsupported promises.",
+            "Explains a useful courier contact step and offers relevant assistance, without inventing policy, a refund or a delivery guarantee."
+          ]
+        },
+        {
+          "id": "language",
+          "title": "Rewrite · Written English",
+          "help": "Assess clarity and meaning. Accept regional spelling and contractions; do not double-penalise a minor typo.",
+          "max": 3,
+          "anchors": [
+            "Errors prevent the customer from understanding the message.",
+            "Recurring grammar, spelling or punctuation errors require rereading or leave important meaning unclear.",
+            "Clear on first reading, with minor errors that do not change the meaning.",
+            "Clear, concise sentences with controlled spelling, grammar and punctuation."
+          ]
+        }
+      ],
+      "example": "I’m sorry you’re having trouble with your delivery. The courier can investigate this directly. I can help you find their contact details and explain the information they’ll need to look into it."
+    },
+    {
+      "id": "d25164a2-656c-4ea5-beb4-298a565aa104",
+      "code": "CS-ESS-05-v1.0",
+      "version": 1,
+      "kind": "writing",
+      "title": "Send an investigation update",
+      "seconds": 120,
+      "instructions": "",
+      "prompt": "Write a response to a customer whose order has been delayed. You do not yet have a final resolution, but you need to reassure the customer while you investigate.",
+      "rubric": [
+        {
+          "id": "empathy",
+          "title": "Investigation update · Empathy and reassurance",
+          "help": "Score the evidence in this response. Accept natural wording; do not require the example answer.",
+          "max": 3,
+          "anchors": [
+            "Dismisses the delay or minimises the concern.",
+            "Offers a generic apology without useful reassurance.",
+            "Acknowledges the inconvenience and reassures the customer that the issue is being investigated.",
+            "Acknowledges the inconvenience naturally and reassures through a clear action rather than an unsupported promise."
+          ]
+        },
+        {
+          "id": "ownership",
+          "title": "Investigation update · Ownership",
+          "help": "Score the evidence in this response. Accept natural wording; do not require the example answer.",
+          "max": 3,
+          "anchors": [
+            "Redirects the customer or abandons the case.",
+            "Says someone will look into it without taking responsibility.",
+            "Takes responsibility for a relevant investigation step.",
+            "Owns the investigation and remains responsible for the customer’s next update."
+          ]
+        },
+        {
+          "id": "honesty",
+          "title": "Investigation update · Honest status",
+          "help": "Score the evidence in this response. Accept natural wording; do not require the example answer.",
+          "max": 3,
+          "anchors": [
+            "Claims an unconfirmed resolution, delivery date or completed action.",
+            "Makes assumptions or an unsupported guarantee.",
+            "Clearly states that the investigation is continuing without inventing a result.",
+            "Clearly separates the current investigation from an unconfirmed outcome and avoids misleading certainty."
+          ]
+        },
+        {
+          "id": "updates",
+          "title": "Investigation update · Keeping the customer updated",
+          "help": "Score the evidence in this response. Accept natural wording; do not require the example answer.",
+          "max": 3,
+          "anchors": [
+            "Gives no expectation of an update.",
+            "Says “checking” or asks the customer to wait without explaining what follows.",
+            "Explains the investigation and promises a further update.",
+            "Explains the next check and when or how an update will follow, including if the investigation is still ongoing."
+          ]
+        },
+        {
+          "id": "language",
+          "title": "Investigation update · Written English",
+          "help": "Assess clarity and meaning. Accept regional spelling and contractions; do not double-penalise a minor typo.",
+          "max": 3,
+          "anchors": [
+            "Errors prevent the customer from understanding the message.",
+            "Recurring grammar, spelling or punctuation errors require rereading or leave important meaning unclear.",
+            "Clear on first reading, with minor errors that do not change the meaning.",
+            "Clear, concise sentences with controlled spelling, grammar and punctuation."
+          ]
+        }
+      ],
+      "example": "I’m sorry your order has been delayed. I’m checking the delivery information and following up with the courier to find out what has happened. I don’t have a confirmed resolution yet, but I’ll keep this moving and update you when I hear back, even if we are still waiting for a final answer."
+    }
+  ],
+  "config": {
+    "flexible": true,
+    "workSeconds": 600,
+    "introductionSeconds": 0,
+    "code": "RES-CS-ESS-1.0",
+    "supportEmail": "",
+    "spellCheck": true,
+    "toolPolicy": "",
+    "notice": "",
+    "oneQuestionAtATime": true,
+    "allowBackNavigation": false,
+    "linkExpiryDays": 7
+  }
+}
