@@ -7,10 +7,17 @@ import { allRows, firstRow, insertRow, updateRows, deleteExpiredPreviews, hashTo
 import { Assessment, validateAssessment, scoreAttempt, reviewCriteria, Review, TestModule, cleanModule, withTypingAdministration } from '@/lib/assessment';
 import { canEdit } from '@/lib/permissions';
 import { updateRows as completeExpiredAttempt } from '@/db/privileged-store';
+import { aiConfigured, scheduleWritingScore, scheduleWritingScores } from '@/lib/ai-writing-review';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 180;
 const json = (data: unknown, status = 200) => NextResponse.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
 function assessment(r: RecordRow): Assessment { return withTypingAdministration({ id: String(r.id), title: String(r.title), description: String(r.description), status: r.status as Assessment['status'], modules: JSON.parse(String(r.modules)), updatedAt: Number(r.updated_at), revision: Number(r.revision), config: r.config ? JSON.parse(String(r.config)) : undefined }); }
-function attempt(r: RecordRow) { const snapshot = JSON.parse(String(r.snapshot)); return { id: r.id, assessmentId: r.assessment_id, title: snapshot.title, alias: r.alias, status: r.status, createdAt: r.created_at, startedAt: r.started_at, deadline: r.deadline, completedAt: r.result ? JSON.parse(String(r.result)).completedAt : null, modules: snapshot.modules, config: snapshot.config, answers: JSON.parse(String(r.answers)), result: r.result ? JSON.parse(String(r.result)) : null, review: r.review ? JSON.parse(String(r.review)) : null, hiring: r.hiring ? JSON.parse(String(r.hiring)) : {stage:'Unassigned',notes:'',revision:0}, expiresAt: r.expires_at, revoked: !!r.revoked, revision: r.revision }; }
+function scoringStatus(value: unknown) {
+    const job = (value || {}) as {state?: string; tries?: number; retryAt?: number; error?: string; startedAt?: number};
+    const stale = job.state === 'running' && Date.now() - (job.startedAt || 0) > 120000;
+    return {state: stale ? 'failed' : job.state, tries: job.tries, retryAt: job.retryAt, error: stale ? 'interrupted' : job.error, startedAt: job.startedAt};
+}
+function attempt(r: RecordRow) { const snapshot = JSON.parse(String(r.snapshot)); return { id: r.id, assessmentId: r.assessment_id, title: snapshot.title, alias: r.alias, status: r.status, createdAt: r.created_at, startedAt: r.started_at, deadline: r.deadline, completedAt: r.result ? JSON.parse(String(r.result)).completedAt : null, modules: snapshot.modules, config: snapshot.config, answers: JSON.parse(String(r.answers)), result: r.result ? JSON.parse(String(r.result)) : null, review: r.review ? JSON.parse(String(r.review)) : null, aiScoring: scoringStatus(r.ai_scoring), hiring: r.hiring ? JSON.parse(String(r.hiring)) : {stage:'Unassigned',notes:'',revision:0}, expiresAt: r.expires_at, revoked: !!r.revoked, revision: r.revision }; }
 export async function GET(request: Request) {
     try {
         const user = await getAssessmentAdmin();
@@ -34,7 +41,8 @@ export async function GET(request: Request) {
                     rows[i] = (await firstRow('attempts', { id: row.id, owner: user.workspaceOwner })) || row;
             }
         }
-        return json({ generalLinks: canEdit(user.role) ? links.map(r=>({id:r.id,assessmentId:r.assessment_id,createdAt:r.created_at,expiresAt:r.expires_at,revoked:!!r.revoked,path:`/join/${r.share_token}`})) : [], presets: Object.keys(kindLabels).filter(k => k !== 'questions').map(k => template(k as ModuleKind)), assessments: tests.map(assessment), attempts: rows.map(attempt), library: library.map(r => ({ id: r.id, module: JSON.parse(String(r.content)), revision: r.revision, updatedAt: r.updated_at })), user: user.displayName, role: user.role, userId: user.userId });
+        if (canEdit(user.role)) scheduleWritingScores(rows);
+        return json({ aiConfigured: aiConfigured(), generalLinks: canEdit(user.role) ? links.map(r=>({id:r.id,assessmentId:r.assessment_id,createdAt:r.created_at,expiresAt:r.expires_at,revoked:!!r.revoked,path:`/join/${r.share_token}`})) : [], presets: Object.keys(kindLabels).filter(k => k !== 'questions').map(k => template(k as ModuleKind)), assessments: tests.map(assessment), attempts: rows.map(attempt), library: library.map(r => ({ id: r.id, module: JSON.parse(String(r.content)), revision: r.revision, updatedAt: r.updated_at })), user: user.displayName, role: user.role, userId: user.userId });
     }
     catch (e) {
         console.error('Admin load', e);
@@ -169,6 +177,18 @@ export async function POST(request: Request) {
             await insertRow(table, { id, owner, assessment_id: row?.id ?? null, token_hash: await hashToken(token), alias: preview ? 'Preview' : body.alias.trim(), snapshot: JSON.stringify(test), status: 'not-started', created_at: now, answers: '{}', demo: 0, revision: 1, expires_at: now + (preview ? 3600000 : (test.config?.linkExpiryDays ?? 7) * 86400000), revoked: 0 });
             return json({ id, path: `/take/${token}` });
         }
+        if (body.action === 'ai-score') {
+            const row = await firstRow('attempts', {id: String(body.id), owner});
+            if (!row) return json({error: 'Result not found.'}, 404);
+            if (row.status !== 'completed') return json({error: 'Wait until the assessment is submitted.'}, 400);
+            if (row.revision !== body.revision) return json({error: 'The result changed. Reload before scoring.'}, 409);
+            if (!aiConfigured()) return json({error: 'The OpenAI API key is not configured.'}, 503);
+            if (!JSON.parse(String(row.snapshot)).modules.some((m: TestModule) => m.kind === 'writing')) return json({error: 'No written responses to score.'}, 400);
+            const job = row.ai_scoring as {state?: string; startedAt?: number};
+            if (job?.state === 'running' && now - (job.startedAt || 0) <= 120000) return json({error: 'Written responses are already being scored.'}, 409);
+            scheduleWritingScore(String(row.id), owner, true);
+            return json({ok: true}, 202);
+        }
         if (body.action === 'review') {
             const row = await firstRow('attempts', { id: String(body.id), owner });
             if (!row)
@@ -186,7 +206,7 @@ export async function POST(request: Request) {
             if (review.outcome !== 'not-scorable' && criteria.some(r => r.key.includes(':') && (typeof review.evidence?.[r.key] !== 'string' || !review.evidence[r.key].trim() || review.evidence[r.key].length > 2000))) return json({ error: 'Add evidence for each writing criterion.' }, 400);
             const previous: Review | null = row.review ? JSON.parse(String(row.review)) : null;
             const { history: oldHistory, ...previousEntry } = previous || {};
-            const clean = { ratings: review.outcome === 'not-scorable' ? {} : Object.fromEntries(criteria.filter(r => typeof review.ratings?.[r.key] === 'number').map(r => [r.key, review.ratings[r.key]])), evidence: Object.fromEntries(criteria.filter(r => typeof review.evidence?.[r.key] === 'string').map(r => [r.key, review.evidence![r.key].trim()])), notes: review.notes.trim(), outcome: review.outcome, reviewedAt: now, reviewer: user.loginName, history: previous ? [...(oldHistory || []), previousEntry] : [] };
+            const clean = { ratings: review.outcome === 'not-scorable' ? {} : Object.fromEntries(criteria.filter(r => typeof review.ratings?.[r.key] === 'number').map(r => [r.key, review.ratings[r.key]])), evidence: Object.fromEntries(criteria.filter(r => typeof review.evidence?.[r.key] === 'string').map(r => [r.key, review.evidence![r.key].trim()])), notes: review.notes.trim(), source: 'human', outcome: review.outcome, reviewedAt: now, reviewer: user.loginName, history: previous ? [...(oldHistory || []), previousEntry] : [] };
             const r = await updateRows('attempts', { review: JSON.stringify(clean), revision: body.revision + 1 }, { id: body.id, owner, revision: body.revision });
             if (!r)
                 return json({ error: 'This review changed. Reload before saving.' }, 409);

@@ -99,7 +99,7 @@ export function assessmentAnalytics(input: AnalyticsAttempt[], tests: { id: stri
         const index = a.status === 'completed' ? 2 : a.revoked ? 4 : a.status === 'in-progress' ? (a.deadline !== null && a.deadline <= now ? 5 : 1) : a.expires_at <= now ? 3 : 0;
         pipeline[index].count++;
     }
-    const reviewOutcomes = [{ name: 'Awaiting review', count: awaiting }, ...(['reviewed', 'follow-up', 'not-scorable'] as const).map((outcome, i) => ({ name: ['Reviewed', 'Follow-up', 'Not scorable'][i], count: completed.filter(a => needsReview(a) && a.review?.outcome === outcome).length }))];
+    const reviewOutcomes = [{ name: 'Awaiting scores', count: awaiting }, ...(['reviewed', 'follow-up', 'not-scorable'] as const).map((outcome, i) => ({ name: ['Reviewed', 'Follow-up', 'Not scorable'][i], count: completed.filter(a => needsReview(a) && a.review?.outcome === outcome).length }))];
     const testsById = new Map(tests.map(test => [test.id, test.title]));
     const groups = new Map<string, AssessmentSummary>();
     const modules = new Map<string, ModuleSummary & { wpms: number[]; accuracies: number[] }>();

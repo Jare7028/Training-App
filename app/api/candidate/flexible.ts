@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { scheduleWritingScore } from '@/lib/ai-writing-review';
 import { firstRow, updateRows, RecordRow } from '@/db/privileged-store';
 import { Answer, Assessment, scoreAttempt, workDuration, typingSeconds, canFinishTypingEarly } from '@/lib/assessment';
 
@@ -78,6 +79,7 @@ export async function flexibleCommand(row: RecordRow, body: Command, view: (row:
     patch.revision = Number(row.revision) + 1;
     const changed = await updateRows(table, patch, { id: row.id, revision: row.revision, status: row.status });
     if (!changed) return NextResponse.json({ error: 'Another tab changed this attempt. Reload saved state.', conflict: true }, { status: 409 });
+    if (patch.status === 'completed' && !row.preview) scheduleWritingScore(String(row.id), String(row.owner));
     const updated = await firstRow(table, { id: row.id });
     return NextResponse.json(view({ ...updated!, preview: row.preview }), { headers: { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
 }

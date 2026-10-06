@@ -6,7 +6,7 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, view
 export const metadata: Metadata = {
   title: "Resolvable Assess",
   referrer: "no-referrer",
-  description: "Practical customer-service work samples, transparent scoring and evidence-based human review.",
+  description: "Practical customer-service work samples, automatic rubric scoring.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

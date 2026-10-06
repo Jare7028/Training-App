@@ -69,13 +69,13 @@ function AssessmentReport({ data, onReview }: { data: AssessmentAnalytics; onRev
         <div className="analytics-metrics">
             <Metric label="Links created" value={count(data.links)}/>
             <Metric label="Submitted" value={count(data.submitted)} detail={data.completionRate === null ? undefined : `${percentage(data.completionRate)} completion`}/>
-            <Metric label="Awaiting writing review" value={count(data.awaiting)}/>
+            <Metric label="Awaiting written scores" value={count(data.awaiting)}/>
             <Metric label="Objective accuracy" value={percentage(data.accuracy)} detail={`${count(data.correct)} of ${count(data.total)} answers correct`}/>
         </div>
         <ActivityChart title="Links & submissions by link date" rows={data.trend} second="submitted" granularity={data.granularity}/>
-        <div className="analytics-two-columns"><CountsChart title="Candidate progress" rows={data.pipeline}/><CountsChart title="Writing review" rows={data.reviewOutcomes} empty="No writing submissions in this period."/></div>
+        <div className="analytics-two-columns"><CountsChart title="Candidate progress" rows={data.pipeline}/><CountsChart title="Written score" rows={data.reviewOutcomes} empty="No writing submissions in this period."/></div>
         <section className="analytics-panel"><div className="analytics-section-heading"><h2><Users size={18}/>Assessments</h2><Button variant="ghost" onClick={onReview}>Candidate review<ArrowUpRight size={16}/></Button></div>
-            {data.assessments.length ? <DataTable label="Assessment performance" headers={['Assessment', 'Links', 'Submitted', 'Completion', 'Awaiting review', 'Objective accuracy']} rows={data.assessments.map(row => [row.title, count(row.links), count(row.submitted), percentage(row.links ? Math.round(row.submitted / row.links * 1000) / 10 : null), count(row.awaiting), <span key="accuracy">{percentage(row.accuracy)}<small>{row.correct} / {row.total} correct</small></span>])}/> : <Empty>No candidate links in this period.</Empty>}
+            {data.assessments.length ? <DataTable label="Assessment performance" headers={['Assessment', 'Links', 'Submitted', 'Completion', 'Awaiting scores', 'Objective accuracy']} rows={data.assessments.map(row => [row.title, count(row.links), count(row.submitted), percentage(row.links ? Math.round(row.submitted / row.links * 1000) / 10 : null), count(row.awaiting), <span key="accuracy">{percentage(row.accuracy)}<small>{row.correct} / {row.total} correct</small></span>])}/> : <Empty>No candidate links in this period.</Empty>}
         </section>
         <section className="analytics-panel"><h2><BarChart3 size={18}/>Objective modules</h2>{objective.length ? <DataTable label="Objective module performance" headers={['Assigned module', 'Submissions', 'Correct / questions', 'Accuracy']} rows={objective.map(row => [<span key="module">{row.title}<small>{kindLabels[row.kind as ModuleKind]} · {row.version}</small></span>, count(row.samples), `${count(row.correct)} / ${count(row.total)}`, percentage(row.accuracy)])}/> : <Empty>No scored objective modules in this period.</Empty>}</section>
         <section className="analytics-panel"><h2><Keyboard size={18}/>Typing</h2>{typing.length ? <>

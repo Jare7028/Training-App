@@ -26,10 +26,10 @@ export function assignedContent(a: Attempt) {
     return JSON.stringify(canonical({modules:a.modules,config:a.config}));
 }
 export function candidateCsv(attempts: Attempt[]) {
-    const rows: (string|number|null)[][] = [['Candidate','Assessment','Assigned reference','Attempt ID','Assessment status','Hiring stage','Correct answers','Objective questions','Objective accuracy (%)','Typing module','Correct-character WPM','Typing accuracy (%)','Typing administration','Writing review','Human rating','Human maximum','Created (UTC)','Submitted (UTC)']];
+    const rows: (string|number|null)[][] = [['Candidate','Assessment','Assigned reference','Attempt ID','Assessment status','Hiring stage','Correct answers','Objective questions','Objective accuracy (%)','Typing module','Correct-character WPM','Typing accuracy (%)','Typing administration','Written score','Human rating','Human maximum','Created (UTC)','Submitted (UTC)']];
     for(const a of attempts){
         const metrics = candidateMetrics(a), typing=a.result?.modules.filter(m=>m.kind==='typing') || [];
-        for(const t of typing.length?typing:[null]) rows.push([a.alias,a.title,a.config?.code||'',a.id,a.revoked?'revoked':a.status,hiringStage(a),metrics.total?metrics.correct:null,metrics.total||null,metrics.accuracy,t?.title||'',t?.netWpm??null,t?.accuracy??null,t?.administration||(t?'Legacy target score':''),a.review?.outcome||(a.status!=='completed'?'Not submitted':a.modules.some(m=>m.kind==='writing')?'Awaiting review':'Not required'),metrics.writing,metrics.writing===null?null:metrics.writingMax,new Date(a.createdAt).toISOString(),a.completedAt?new Date(a.completedAt).toISOString():'']);
+        for(const t of typing.length?typing:[null]) rows.push([a.alias,a.title,a.config?.code||'',a.id,a.revoked?'revoked':a.status,hiringStage(a),metrics.total?metrics.correct:null,metrics.total||null,metrics.accuracy,t?.title||'',t?.netWpm??null,t?.accuracy??null,t?.administration||(t?'Legacy target score':''),a.review?.outcome||(a.status!=='completed'?'Not submitted':a.modules.some(m=>m.kind==='writing')?'Awaiting scores':'Not required'),metrics.writing,metrics.writing===null?null:metrics.writingMax,new Date(a.createdAt).toISOString(),a.completedAt?new Date(a.completedAt).toISOString():'']);
     }
     return '\uFEFF'+rows.map(row=>row.map(csvCell).join(',')).join('\r\n');
 }

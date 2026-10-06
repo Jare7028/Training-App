@@ -112,6 +112,9 @@ export type Review = {
     reviewedAt: number;
     evidence?: Record<string, string>;
     reviewer?: string;
+    source?: 'ai' | 'human';
+    model?: string;
+    scoringVersion?: string;
     history?: Omit<Review, 'history'>[];
 };
 export type HiringDecision = { stage: string; notes: string; revision: number; updatedAt?: number; updatedBy?: string };
@@ -130,6 +133,7 @@ export type Attempt = {
     answers: Record<string, Answer>;
     result: Result | null;
     review: Review | null;
+    aiScoring?: { state?: 'running' | 'completed' | 'failed' | 'blocked'; tries?: number; retryAt?: number; error?: string; startedAt?: number };
     expiresAt: number;
     revoked: boolean;
     revision: number;
@@ -156,7 +160,7 @@ export function withTypingAdministration(a: Assessment): Assessment {
         notice:'',
     } };
 }
-export function reviewCriteria(modules: TestModule[]) { return modules.filter(m => m.kind === 'writing').flatMap(m => m.rubric ? m.rubric.map(r => ({ ...r, key: `${m.id}:${r.id}`, moduleTitle: m.title })) : rubric.map(r => ({ ...r, max: 4, key: r.id, moduleTitle: m.title }))); }
+export function reviewCriteria(modules: TestModule[]) { return [...new Map(modules.filter(m => m.kind === 'writing').flatMap(m => m.rubric ? m.rubric.map(r => ({ ...r, key: `${m.id}:${r.id}`, moduleTitle: m.title })) : rubric.map(r => ({ ...r, max: 4, key: r.id, moduleTitle: m.title }))).map(r => [r.key, r])).values()]; }
 export const formatTime = (seconds: number) => `${Math.floor(Math.max(0, seconds) / 60)}:${String(Math.ceil(Math.max(0, seconds) % 60)).padStart(2, '0')}`;
 export const words = (s: string) => s.trim() ? s.trim().split(/\s+/).length : 0;
 export function validateAssessment(a: Assessment, publishing = false): string | null {

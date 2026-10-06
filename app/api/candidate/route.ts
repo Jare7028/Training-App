@@ -5,11 +5,13 @@ import { sameOrigin } from '@/lib/request-origin';
 import { firstRow, updateRows, hashToken, RecordRow } from '@/db/privileged-store';
 import { Assessment, Answer, scoreAttempt, workDuration, sectionDuration, canFinishTypingEarly } from '@/lib/assessment';
 import { flexibleCommand } from './flexible';
+import { scheduleWritingScore } from '@/lib/ai-writing-review';
 import { flowModule, flowAnswer, questionAnswer, moveQuestion, hasNextQuestion } from '@/lib/candidate-flow';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 180;
 const json = (data: unknown, status = 200) => NextResponse.json(data, { status, headers: { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
 function table(row: RecordRow) { return row.preview ? 'preview_attempts' : 'attempts'; }
-async function reload(row: RecordRow) { return { ...(await firstRow(table(row), { id: row.id }))!, preview: row.preview }; }
+async function reload(row: RecordRow): Promise<RecordRow> { return { ...(await firstRow(table(row), { id: row.id }))!, preview: row.preview }; }
 async function find(token: string) {
     if (!/^[a-f0-9]{64}$/.test(token)) return null;
     const hash = await hashToken(token);
@@ -45,7 +47,9 @@ async function expire(row: RecordRow) { if (row.status === 'in-progress' && Numb
     const t: Assessment = JSON.parse(String(row.snapshot));
     const result = scoreAttempt(t.modules, JSON.parse(String(row.answers)), Number(row.deadline), true);
     await updateRows(table(row), { status: 'completed', result: JSON.stringify(result), revision: Number(row.revision) + 1 }, { id: row.id, revision: row.revision, status: 'in-progress' });
-    return await reload(row);
+    const updated = await reload(row);
+    if (!row.preview && updated.status === 'completed') scheduleWritingScore(String(row.id), String(row.owner));
+    return updated;
 } return row; }
 export async function GET(request: Request) { try {
     const row = await find(new URL(request.url).searchParams.get('token') || '');
@@ -155,6 +159,7 @@ export async function POST(request: Request) {
         const r = await updateRows(table(row), { answers: JSON.stringify(answers), current_index: next, section_started_at: started, status, result, revision: Number(row.revision) + 1 }, { id: row.id, revision: row.revision, status: 'in-progress' });
         if (!r)
             return json({ error: 'The assessment has changed in another tab. Reload to continue.', conflict: true }, 409);
+        if (status === 'completed' && !row.preview) scheduleWritingScore(String(row.id), String(row.owner));
         return json(view(await reload(row)));
     }
     catch (e) {

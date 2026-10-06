@@ -128,14 +128,15 @@ try {
         await page.getByRole('button', { name: 'Refresh', exact: true }).click();
         await page.getByRole('textbox', { name: 'Search candidates' }).fill(alias);
         const row = page.getByRole('row').filter({ hasText: alias });
-        await row.getByText('Awaiting review', { exact: true }).waitFor();
+        await row.getByText(/Scoring…|Scoring failed|Setup needed/).waitFor();
         await row.getByRole('button', { name: `Review ${alias}`, exact: true }).click();
         await page.getByText(reply, { exact: true }).waitFor();
+        await page.locator('.manual-score > summary').click();
         for (const criterion of ['Policy & accuracy', 'Empathy & tone', 'Clear writing', 'Ownership & next step']) await page.getByRole('radiogroup', { name: criterion, exact: true }).locator('.rating-choice').nth(4).click();
         const keyboardRating = page.getByRole('radiogroup', { name: 'Clear writing', exact: true }).getByRole('radio').nth(4); await keyboardRating.focus(); await keyboardRating.press('Space'); assert.equal(await keyboardRating.isChecked(), true);
         await page.getByLabel('Review notes & evidence', { exact: true }).fill('Accurately applies the investigation policy and gives a clear next-working-day update.');
         await audit(page, `${device} human-review accessibility`);
-        await page.getByRole('button', { name: 'Save human review', exact: true }).click();
+        await page.getByRole('button', { name: 'Save score adjustment', exact: true }).click();
         await page.getByText(/Last reviewed/).waitFor();
         await page.screenshot({ path: `test-results/${device}-human-review.png`, fullPage: true });
         const stored = (await (await page.request.get(base + '/api/admin')).json()).attempts.find(a => a.alias === alias);

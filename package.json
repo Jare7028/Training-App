@@ -39,7 +39,8 @@
     "test:passwords": "node tests/account-passwords.mjs",
     "test:answer-keys": "node tests/answer-keys.mjs",
     "test:mobile": "node tests/mobile-layout.mjs",
-    "test:general-links": "node tests/general-links.mjs"
+    "test:general-links": "node tests/general-links.mjs",
+    "test:ai-scoring": "node tests/writing-scoring.mjs && node tests/ai-scoring-qa.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
