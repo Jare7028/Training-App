@@ -59,7 +59,7 @@ export function validatedWritingReview(raw: unknown, input: ReturnType<typeof sc
         evidence[criterion.key] = `${quotations.join(' ')}${quotations.length ? '\n' : ''}${item.reason}`.slice(0, 2000);
     }
     return { ratings, evidence, notes: data.summary.trim(), outcome: 'reviewed', reviewedAt: now,
-        reviewer: 'GPT-6 Luna', source: 'ai', model: writingModel, scoringVersion };
+        reviewer: 'Automatic scoring', source: 'ai', model: writingModel, scoringVersion };
 }
 
 export function parseScoringResponse(body: unknown): unknown {

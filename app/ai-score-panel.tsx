@@ -11,12 +11,12 @@ export function AiScorePanel({attempt: a, available, readOnly, busy, onScore}: {
     const criteria = [...new Map(reviewCriteria(a.modules).map(r => [r.key, r])).values()];
     const errors: Record<string, string> = {
         configuration: 'Check the OpenAI API key.', capacity: 'OpenAI usage limit reached. Check billing or try again shortly.',
-        model_unavailable: 'GPT-6 Luna is unavailable to this OpenAI project.',
+        model_unavailable: 'Automatic scoring is temporarily unavailable.',
         invalid_output: 'The score did not pass rubric validation.', refused: 'OpenAI could not score this response.',
     };
     return <section className="ai-score-panel" aria-label="Written scoring">
         <div className="ai-score-heading"><div><h3>{a.review ? 'Rubric scores' : !available ? 'Scoring setup needed' : failed ? 'Scoring failed' : 'Scoring written responses…'}</h3>
-            {a.review && <small>{a.review.source === 'ai' ? 'GPT-6 Luna' : 'Assessor adjustment'} · {new Date(a.review.reviewedAt).toLocaleDateString('en-GB')}</small>}</div>
+            {a.review && <small>{a.review.source === 'ai' ? 'Automatic scoring' : 'Assessor adjustment'} · {new Date(a.review.reviewedAt).toLocaleDateString('en-GB')}</small>}</div>
             {!readOnly && available && !running && (a.review || failed || a.aiScoring?.state === 'blocked') && <Button variant="outline" disabled={busy} onClick={onScore}>{a.review ? 'Score again' : 'Retry scoring'}</Button>}
         </div>
         {!a.review && !available && <p>Add OPENAI_API_KEY in the deployment settings to enable automatic scoring.</p>}
