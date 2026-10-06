@@ -107,6 +107,7 @@
 .account-controls select { min-width: 120px; }
 .assessment-details { max-height: 85dvh; overflow-y: auto; }
 .rubric-review fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.written-review details p { color: #526572; }
 @media (max-width: 760px) {
   .role-grid { grid-template-columns: 1fr; }
   .account-row { flex-direction: column; align-items: stretch; gap: 16px; }
